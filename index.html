@@ -1976,12 +1976,9 @@ Schema:
         }, 600);
       }
 
-      // Versione auto-aggiornante: usa la data dell'ultimo deploy del file
-      const lastMod = new Date(document.lastModified);
-      const build = lastMod.getFullYear() + '.'
-        + String(lastMod.getMonth() + 1).padStart(2, '0') + '.'
-        + String(lastMod.getDate()).padStart(2, '0');
-      document.getElementById('footer-version').textContent = `v1.0 · Build ${build}`;
+      // Versione: aggiornata ad ogni deploy
+      const BUILD_DATE = '2026.03.26';
+      document.getElementById('footer-version').textContent = `v1.0 · Build ${BUILD_DATE}`;
 
       console.log('[FactChecker AI] v1.0 — Pronto.');
     }
