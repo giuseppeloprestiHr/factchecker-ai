@@ -1388,13 +1388,15 @@ Schema:
     =================================================== */
     // Proxy Supabase Edge Function — risolve CORS
     const PROXY_URL = 'https://kxftkhwucloiiivhdovn.supabase.co/functions/v1/dynamic-handler';
+    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imt4ZnRraHd1Y2xvaWlpdmhkb3ZuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ1NDcyNTksImV4cCI6MjA5MDEyMzI1OX0.ivOE7hX4gsJvXKX89cvaRWH-IsXdGMbk3QGwJ_vj_4k';
 
     async function callAPI(messages, apiKey) {
       const response = await fetch(PROXY_URL, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'x-api-key': apiKey
+          'x-api-key': apiKey,
+          'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
         },
         body: JSON.stringify({
           model: 'claude-sonnet-4-6',
