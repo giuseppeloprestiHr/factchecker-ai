@@ -1092,8 +1092,8 @@
   ================================================ -->
   <footer class="site-footer">
     <div class="container--wide inner">
-      <p class="footer-text">FactChecker AI — per uso personale e di ricerca. Non sostituisce il giudizio critico.</p>
-      <span class="footer-version">v1.0 · client-side only</span>
+      <p class="footer-text">FactChecker AI — per uso personale e di ricerca. Non sostituisce il giudizio critico. · <span style="color:var(--gold-dim)">Created by LPG</span></p>
+      <span class="footer-version" id="footer-version">v1.0</span>
     </div>
   </footer>
 
@@ -1974,7 +1974,14 @@ Schema:
         }, 600);
       }
 
-      console.log('[FactChecker AI] v1.0 — client-side only. Pronto.');
+      // Versione auto-aggiornante: usa la data dell'ultimo deploy del file
+      const lastMod = new Date(document.lastModified);
+      const build = lastMod.getFullYear() + '.'
+        + String(lastMod.getMonth() + 1).padStart(2, '0') + '.'
+        + String(lastMod.getDate()).padStart(2, '0');
+      document.getElementById('footer-version').textContent = `v1.0 · Build ${build}`;
+
+      console.log('[FactChecker AI] v1.0 — Pronto.');
     }
 
     window.addEventListener('DOMContentLoaded', init);
