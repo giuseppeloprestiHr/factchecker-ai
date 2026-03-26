@@ -1386,16 +1386,18 @@ Schema:
     /* ===================================================
        API CALL
     =================================================== */
+    // Proxy Supabase Edge Function — risolve CORS
+    const PROXY_URL = 'https://kxftkhwucloiiivhdovn.supabase.co/functions/v1/dynamic-handler';
+
     async function callAPI(messages, apiKey) {
-      const response = await fetch('https://api.anthropic.com/v1/messages', {
+      const response = await fetch(PROXY_URL, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'x-api-key': apiKey,
-          'anthropic-version': '2023-06-01'
+          'x-api-key': apiKey
         },
         body: JSON.stringify({
-          model: 'claude-sonnet-4-20250514',
+          model: 'claude-sonnet-4-6',
           max_tokens: 8000,
           system: SYSTEM_PROMPT,
           tools: [
