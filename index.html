@@ -1,0 +1,1981 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>FactChecker AI — Analisi della Credibilità</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;0,600;0,700;1,400&family=Source+Sans+3:ital,wght@0,300;0,400;0,600;1,400&display=swap" rel="stylesheet">
+
+  <style>
+    /* ===================================================
+       RESET & VARIABLES
+    =================================================== */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:           #0b0b10;
+      --bg-2:         #111118;
+      --surface:      #18181f;
+      --card:         #1f1f28;
+      --card-hover:   #26262f;
+      --border:       #2c2c3a;
+      --border-light: #3a3a4a;
+
+      --text:         #e8e3d8;
+      --text-muted:   #6e6e85;
+      --text-light:   #9898b0;
+
+      --gold:         #c9a76d;
+      --gold-dim:     #a8895a;
+
+      --confirm:      #4ade80;
+      --confirm-bg:   rgba(74,222,128,.1);
+      --confirm-bd:   rgba(74,222,128,.25);
+      --deny:         #f87171;
+      --deny-bg:      rgba(248,113,113,.1);
+      --deny-bd:      rgba(248,113,113,.25);
+      --neutral:      #94a3b8;
+      --neutral-bg:   rgba(148,163,184,.08);
+      --neutral-bd:   rgba(148,163,184,.2);
+      --warn:         #fbbf24;
+      --warn-bg:      rgba(251,191,36,.1);
+      --warn-bd:      rgba(251,191,36,.25);
+
+      --radius:       8px;
+      --radius-lg:    14px;
+      --shadow:       0 8px 32px rgba(0,0,0,.5);
+      --shadow-sm:    0 2px 8px rgba(0,0,0,.3);
+
+      --font-display: 'Playfair Display', Georgia, serif;
+      --font-body:    'Source Sans 3', system-ui, sans-serif;
+      --transition:   .2s ease;
+    }
+
+    html { font-size: 16px; scroll-behavior: smooth; }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--font-body);
+      font-weight: 400;
+      line-height: 1.6;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* ===================================================
+       TYPOGRAPHY
+    =================================================== */
+    h1,h2,h3,h4 { font-family: var(--font-display); font-weight: 600; line-height: 1.25; }
+    a { color: var(--gold); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+
+    /* ===================================================
+       LAYOUT
+    =================================================== */
+    .container { max-width: 860px; margin: 0 auto; padding: 0 1.5rem; }
+    .container--wide { max-width: 1100px; margin: 0 auto; padding: 0 1.5rem; }
+
+    /* ===================================================
+       HEADER
+    =================================================== */
+    .site-header {
+      background: var(--bg-2);
+      border-bottom: 1px solid var(--border);
+      padding: 1.2rem 0;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+    .site-header .inner {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .header-brand {
+      display: flex;
+      align-items: center;
+      gap: 0.9rem;
+    }
+    .header-logo {
+      width: 44px; height: 44px;
+      background: var(--gold);
+      border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.3rem;
+      flex-shrink: 0;
+    }
+    .header-title { font-size: 1.3rem; font-family: var(--font-display); font-weight: 700; color: var(--text); }
+    .header-tagline { font-size: 0.78rem; color: var(--text-muted); letter-spacing: .03em; margin-top: 1px; }
+    .header-actions { display: flex; gap: .6rem; align-items: center; }
+
+    /* ===================================================
+       BUTTONS
+    =================================================== */
+    .btn {
+      display: inline-flex; align-items: center; justify-content: center; gap: .4rem;
+      padding: .55rem 1.2rem;
+      border-radius: var(--radius);
+      border: 1px solid var(--border-light);
+      background: var(--card);
+      color: var(--text-light);
+      font-family: var(--font-body);
+      font-size: .85rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background var(--transition), color var(--transition), border-color var(--transition);
+      white-space: nowrap;
+    }
+    .btn:hover { background: var(--card-hover); color: var(--text); border-color: var(--border-light); }
+    .btn--primary {
+      background: var(--gold);
+      border-color: var(--gold);
+      color: #1a1200;
+      font-size: .95rem;
+      padding: .7rem 1.8rem;
+    }
+    .btn--primary:hover { background: var(--gold-dim); border-color: var(--gold-dim); color: #1a1200; }
+    .btn--primary:disabled { opacity: .45; cursor: not-allowed; }
+    .btn--ghost { background: transparent; border-color: transparent; color: var(--text-muted); }
+    .btn--ghost:hover { background: var(--card); color: var(--text); border-color: var(--border); }
+    .btn--sm { padding: .35rem .75rem; font-size: .78rem; }
+    .btn--icon { padding: .5rem; border-radius: 50%; }
+    .btn--approve { background: var(--confirm-bg); border-color: var(--confirm-bd); color: var(--confirm); }
+    .btn--approve:hover { background: var(--confirm); color: #0a2014; border-color: var(--confirm); }
+    .btn--reject { background: var(--deny-bg); border-color: var(--deny-bd); color: var(--deny); }
+    .btn--reject:hover { background: var(--deny); color: #1a0000; border-color: var(--deny); }
+
+    /* ===================================================
+       TAB NAV
+    =================================================== */
+    .tab-nav {
+      background: var(--bg-2);
+      border-bottom: 1px solid var(--border);
+    }
+    .tab-nav .inner {
+      display: flex;
+      gap: 0;
+    }
+    .tab-btn {
+      padding: .75rem 1.4rem;
+      background: transparent;
+      border: none;
+      border-bottom: 2px solid transparent;
+      color: var(--text-muted);
+      font-family: var(--font-body);
+      font-size: .85rem;
+      font-weight: 600;
+      cursor: pointer;
+      letter-spacing: .02em;
+      transition: color var(--transition), border-color var(--transition);
+    }
+    .tab-btn:hover { color: var(--text-light); }
+    .tab-btn.active { color: var(--gold); border-bottom-color: var(--gold); }
+
+    /* ===================================================
+       MAIN PANELS
+    =================================================== */
+    main { flex: 1; padding: 2.5rem 0 4rem; }
+    .panel { display: none; }
+    .panel.active { display: block; }
+
+    /* ===================================================
+       INPUT SECTION
+    =================================================== */
+    .input-section { margin-bottom: 2.5rem; }
+    .input-label {
+      font-family: var(--font-display);
+      font-size: 2rem;
+      font-weight: 600;
+      margin-bottom: .4rem;
+      line-height: 1.2;
+    }
+    .input-sublabel {
+      color: var(--text-muted);
+      font-size: .9rem;
+      margin-bottom: 1.4rem;
+    }
+
+    .input-wrapper {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      overflow: hidden;
+      transition: border-color var(--transition), box-shadow var(--transition);
+    }
+    .input-wrapper:focus-within {
+      border-color: var(--gold-dim);
+      box-shadow: 0 0 0 3px rgba(201,167,109,.12);
+    }
+
+    #news-input {
+      width: 100%;
+      min-height: 140px;
+      padding: 1.1rem 1.2rem;
+      background: transparent;
+      border: none;
+      outline: none;
+      color: var(--text);
+      font-family: var(--font-body);
+      font-size: .95rem;
+      line-height: 1.65;
+      resize: vertical;
+    }
+    #news-input::placeholder { color: var(--text-muted); }
+
+    .input-footer {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: .6rem 1rem .6rem 1.2rem;
+      border-top: 1px solid var(--border);
+      gap: .8rem;
+      flex-wrap: wrap;
+    }
+    .input-type-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: .4rem;
+      padding: .25rem .7rem;
+      border-radius: 999px;
+      font-size: .75rem;
+      font-weight: 600;
+      letter-spacing: .04em;
+      background: var(--neutral-bg);
+      border: 1px solid var(--neutral-bd);
+      color: var(--neutral);
+      transition: all var(--transition);
+    }
+    .input-type-badge.type-url { background: var(--warn-bg); border-color: var(--warn-bd); color: var(--warn); }
+    .input-type-badge.type-image { background: rgba(139,92,246,.1); border-color: rgba(139,92,246,.3); color: #a78bfa; }
+    .input-footer-actions { display: flex; align-items: center; gap: .5rem; }
+
+    .image-upload-area {
+      padding: 0 1.2rem 1rem;
+    }
+    #image-preview-container {
+      display: none;
+      margin-top: .75rem;
+    }
+    .image-preview-inner {
+      position: relative;
+      display: inline-block;
+    }
+    #image-preview {
+      max-width: 200px;
+      max-height: 140px;
+      border-radius: var(--radius);
+      border: 1px solid var(--border-light);
+      display: block;
+      object-fit: cover;
+    }
+    .remove-image-btn {
+      position: absolute;
+      top: -8px; right: -8px;
+      width: 22px; height: 22px;
+      border-radius: 50%;
+      background: var(--deny);
+      border: none;
+      color: white;
+      font-size: .8rem;
+      cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      line-height: 1;
+    }
+
+    .analyze-bar {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      margin-top: 1.2rem;
+      flex-wrap: wrap;
+    }
+    #analyze-btn { font-size: 1rem; padding: .8rem 2.2rem; }
+
+    /* ===================================================
+       LOADING STATE
+    =================================================== */
+    #loading-section {
+      display: none;
+      padding: 2.5rem 0;
+      text-align: center;
+    }
+    .loading-spinner {
+      width: 52px; height: 52px;
+      border: 3px solid var(--border-light);
+      border-top-color: var(--gold);
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+      margin: 0 auto 1.5rem;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .loading-title {
+      font-family: var(--font-display);
+      font-size: 1.25rem;
+      color: var(--text);
+      margin-bottom: 1.2rem;
+    }
+    .loading-steps {
+      list-style: none;
+      display: inline-flex;
+      flex-direction: column;
+      gap: .5rem;
+      text-align: left;
+      min-width: 260px;
+    }
+    .loading-step {
+      display: flex;
+      align-items: center;
+      gap: .7rem;
+      font-size: .88rem;
+      color: var(--text-muted);
+      transition: color var(--transition);
+    }
+    .loading-step .step-icon { font-size: 1rem; width: 20px; text-align: center; }
+    .loading-step.done { color: var(--confirm); }
+    .loading-step.active { color: var(--text); font-weight: 600; }
+    .loading-step.active .step-icon { animation: pulse 1.2s ease-in-out infinite; }
+    @keyframes pulse { 0%,100% { opacity:1; } 50% { opacity:.4; } }
+
+    /* ===================================================
+       RESULTS SECTION
+    =================================================== */
+    #results-section { display: none; }
+    .results-header {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      margin-bottom: 1.8rem;
+      gap: 1rem;
+      flex-wrap: wrap;
+    }
+    .results-title {
+      font-family: var(--font-display);
+      font-size: 1.4rem;
+      color: var(--text);
+    }
+    .results-title span { color: var(--text-muted); font-weight: 400; font-style: italic; }
+    .results-meta { font-size: .8rem; color: var(--text-muted); }
+    .results-fonte {
+      display: inline-flex; align-items: center; gap: .4rem;
+      padding: .25rem .75rem;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      font-size: .8rem;
+      color: var(--text-light);
+      margin-top: .4rem;
+    }
+
+    /* Result Cards */
+    .result-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 1.5rem;
+      margin-bottom: 1.2rem;
+      animation: fadeUp .4s ease both;
+    }
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(14px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    .result-card:nth-child(2) { animation-delay: .08s; }
+    .result-card:nth-child(3) { animation-delay: .16s; }
+
+    .result-card-header {
+      display: flex; align-items: center; gap: .75rem;
+      margin-bottom: 1.1rem;
+    }
+    .result-card-num {
+      width: 28px; height: 28px;
+      background: var(--gold);
+      border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: .75rem;
+      font-weight: 700;
+      color: #1a1200;
+      flex-shrink: 0;
+    }
+    .result-card-title { font-family: var(--font-display); font-size: 1rem; font-weight: 600; }
+
+    /* Section 1: Diffusione */
+    .diffusione-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+      gap: 1rem;
+    }
+    .diff-stat {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1rem;
+      text-align: center;
+    }
+    .diff-stat-value { font-family: var(--font-display); font-size: 2.2rem; font-weight: 700; color: var(--gold); }
+    .diff-stat-label { font-size: .78rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: .06em; margin-top: .2rem; }
+    .diffusione-badge {
+      display: inline-flex; align-items: center; gap: .4rem;
+      padding: .3rem .9rem;
+      border-radius: 999px;
+      font-size: .82rem;
+      font-weight: 700;
+      letter-spacing: .05em;
+      text-transform: uppercase;
+      margin-top: .8rem;
+    }
+    .diff-alta { background: var(--deny-bg); border: 1px solid var(--deny-bd); color: var(--deny); }
+    .diff-virale { background: rgba(239,68,68,.18); border: 1px solid rgba(239,68,68,.4); color: #fca5a5; }
+    .diff-media { background: var(--warn-bg); border: 1px solid var(--warn-bd); color: var(--warn); }
+    .diff-bassa { background: var(--neutral-bg); border: 1px solid var(--neutral-bd); color: var(--neutral); }
+
+    /* Section 2: Claims Bar */
+    .claims-bar-wrap { margin-bottom: 1.2rem; }
+    .claims-bar-label {
+      display: flex;
+      justify-content: space-between;
+      font-size: .82rem;
+      color: var(--text-muted);
+      margin-bottom: .45rem;
+    }
+    .claims-bar {
+      height: 14px;
+      border-radius: 999px;
+      background: var(--card);
+      overflow: hidden;
+      display: flex;
+    }
+    .claims-bar-segment {
+      height: 100%;
+      transition: width .6s ease;
+    }
+    .seg-confirm { background: var(--confirm); }
+    .seg-deny    { background: var(--deny); }
+    .seg-neutral { background: var(--neutral); opacity: .6; }
+
+    .claims-counts {
+      display: flex; gap: 1.2rem; flex-wrap: wrap;
+      font-size: .85rem; margin-bottom: 1.5rem;
+    }
+    .claim-count-item { display: flex; align-items: center; gap: .4rem; }
+    .cc-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+
+    /* Claims accordion */
+    .claims-list { display: flex; flex-direction: column; gap: .75rem; }
+    .claim-item {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+    }
+    .claim-header {
+      display: flex; align-items: center; gap: .75rem;
+      padding: .85rem 1rem;
+      cursor: pointer;
+      transition: background var(--transition);
+    }
+    .claim-header:hover { background: var(--card-hover); }
+    .claim-num {
+      width: 22px; height: 22px;
+      border-radius: 50%;
+      background: var(--border-light);
+      display: flex; align-items: center; justify-content: center;
+      font-size: .72rem; font-weight: 700;
+      flex-shrink: 0;
+    }
+    .claim-text { flex: 1; font-size: .88rem; line-height: 1.5; }
+    .claim-verdict {
+      padding: .25rem .65rem;
+      border-radius: 999px;
+      font-size: .72rem;
+      font-weight: 700;
+      letter-spacing: .04em;
+      text-transform: uppercase;
+      flex-shrink: 0;
+    }
+    .verdict-CONFERMATA   { background: var(--confirm-bg); border: 1px solid var(--confirm-bd); color: var(--confirm); }
+    .verdict-SMENTITA     { background: var(--deny-bg); border: 1px solid var(--deny-bd); color: var(--deny); }
+    .verdict-CONTROVERSA  { background: var(--warn-bg); border: 1px solid var(--warn-bd); color: var(--warn); }
+    .verdict-NON_VERIFICABILE { background: var(--neutral-bg); border: 1px solid var(--neutral-bd); color: var(--neutral); }
+    .claim-confidence { font-size: .78rem; color: var(--text-muted); flex-shrink: 0; min-width: 36px; text-align: right; }
+    .claim-chevron { color: var(--text-muted); transition: transform var(--transition); font-size: .8rem; flex-shrink: 0; }
+    .claim-item.open .claim-chevron { transform: rotate(90deg); }
+
+    .claim-body {
+      display: none;
+      padding: 0 1rem 1rem;
+      border-top: 1px solid var(--border);
+    }
+    .claim-item.open .claim-body { display: block; }
+    .claim-sources-title { font-size: .75rem; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: .06em; padding: .7rem 0 .5rem; }
+
+    .source-row {
+      display: flex; align-items: flex-start; gap: .6rem;
+      padding: .5rem .6rem;
+      border-radius: var(--radius);
+      margin-bottom: .3rem;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      font-size: .82rem;
+    }
+    .source-pos-badge {
+      padding: .15rem .5rem;
+      border-radius: 999px;
+      font-size: .68rem;
+      font-weight: 700;
+      letter-spacing: .04em;
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+    .pos-CONFERMA  { background: var(--confirm-bg); border: 1px solid var(--confirm-bd); color: var(--confirm); }
+    .pos-SMENTISCE { background: var(--deny-bg); border: 1px solid var(--deny-bd); color: var(--deny); }
+    .pos-NEUTRO    { background: var(--neutral-bg); border: 1px solid var(--neutral-bd); color: var(--neutral); }
+    .source-info { flex: 1; min-width: 0; }
+    .source-name-link { font-weight: 600; color: var(--gold); }
+    .source-snippet { color: var(--text-muted); font-size: .79rem; margin-top: .15rem; line-height: 1.45; }
+    .source-quality { font-size: .72rem; flex-shrink: 0; padding: .15rem .45rem; border-radius: 4px; }
+    .q-alta   { background: var(--confirm-bg); color: var(--confirm); }
+    .q-media  { background: var(--warn-bg); color: var(--warn); }
+    .q-bassa  { background: var(--neutral-bg); color: var(--neutral); }
+    .source-db-match {
+      font-size: .68rem;
+      padding: .1rem .4rem;
+      border-radius: 4px;
+      background: rgba(201,167,109,.12);
+      border: 1px solid rgba(201,167,109,.25);
+      color: var(--gold);
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+
+    /* Section 3: Attendibilità */
+    .attendibilita-layout {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1.5rem;
+      align-items: start;
+    }
+    @media (max-width: 560px) { .attendibilita-layout { grid-template-columns: 1fr; } }
+
+    .gauge-wrap { display: flex; flex-direction: column; align-items: center; gap: .5rem; }
+    .gauge-svg { width: 200px; height: 115px; }
+    .gauge-semaforo { font-size: 1.8rem; margin-top: -.2rem; }
+    .gauge-label { font-size: .78rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: .06em; }
+
+    .attendibilita-details { display: flex; flex-direction: column; gap: .8rem; }
+    .detail-block { }
+    .detail-label { font-size: .75rem; font-weight: 600; text-transform: uppercase; letter-spacing: .06em; color: var(--text-muted); margin-bottom: .3rem; }
+    .detail-value { font-size: .9rem; color: var(--text); line-height: 1.55; }
+    .certezza-badge {
+      display: inline-flex; align-items: center; gap: .3rem;
+      padding: .2rem .6rem;
+      border-radius: 4px;
+      font-size: .78rem; font-weight: 600;
+    }
+    .cert-alta   { background: var(--confirm-bg); border: 1px solid var(--confirm-bd); color: var(--confirm); }
+    .cert-media  { background: var(--warn-bg); border: 1px solid var(--warn-bd); color: var(--warn); }
+    .cert-bassa  { background: var(--deny-bg); border: 1px solid var(--deny-bd); color: var(--deny); }
+
+    .warnings-list { list-style: none; display: flex; flex-direction: column; gap: .4rem; margin-top: .3rem; }
+    .warning-item {
+      display: flex; align-items: flex-start; gap: .5rem;
+      padding: .5rem .7rem;
+      background: var(--warn-bg);
+      border: 1px solid var(--warn-bd);
+      border-radius: var(--radius);
+      font-size: .82rem;
+      color: var(--text-light);
+    }
+    .warning-icon { color: var(--warn); flex-shrink: 0; }
+
+    /* ===================================================
+       ERROR STATE
+    =================================================== */
+    #error-section {
+      display: none;
+      background: var(--deny-bg);
+      border: 1px solid var(--deny-bd);
+      border-radius: var(--radius-lg);
+      padding: 1.2rem 1.5rem;
+      margin-bottom: 1.5rem;
+    }
+    .error-title { font-weight: 600; color: var(--deny); margin-bottom: .3rem; }
+    .error-message { font-size: .88rem; color: var(--text-light); }
+
+    /* ===================================================
+       SOURCES DB PANEL
+    =================================================== */
+    .sources-header {
+      display: flex; align-items: center; justify-content: space-between;
+      margin-bottom: 1.4rem; flex-wrap: wrap; gap: 1rem;
+    }
+    .sources-title { font-family: var(--font-display); font-size: 1.4rem; }
+    .sources-subtitle { font-size: .85rem; color: var(--text-muted); margin-top: .25rem; }
+
+    .sources-filters { display: flex; gap: .6rem; flex-wrap: wrap; margin-bottom: 1.2rem; }
+    .filter-select {
+      background: var(--card);
+      border: 1px solid var(--border-light);
+      border-radius: var(--radius);
+      color: var(--text-light);
+      font-family: var(--font-body);
+      font-size: .83rem;
+      padding: .4rem .8rem;
+      cursor: pointer;
+      outline: none;
+    }
+    .filter-select:focus { border-color: var(--gold-dim); }
+    option { background: var(--card); }
+
+    .sources-table-wrap {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      overflow: hidden;
+      overflow-x: auto;
+    }
+    table { width: 100%; border-collapse: collapse; font-size: .85rem; }
+    thead { background: var(--card); }
+    th {
+      padding: .75rem 1rem;
+      text-align: left;
+      font-size: .72rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: .06em;
+      color: var(--text-muted);
+      white-space: nowrap;
+    }
+    td {
+      padding: .7rem 1rem;
+      border-top: 1px solid var(--border);
+      color: var(--text-light);
+      vertical-align: middle;
+    }
+    tr:hover td { background: var(--card); }
+    .source-score-bar {
+      display: flex; align-items: center; gap: .6rem;
+    }
+    .score-bar-bg {
+      flex: 1; height: 6px; background: var(--border-light);
+      border-radius: 999px; overflow: hidden;
+      min-width: 60px;
+    }
+    .score-bar-fill { height: 100%; border-radius: 999px; }
+    .score-num { font-size: .8rem; font-weight: 600; min-width: 26px; text-align: right; }
+    .bias-tag {
+      padding: .15rem .5rem; border-radius: 4px;
+      font-size: .72rem; font-weight: 600;
+      background: var(--card); border: 1px solid var(--border);
+      color: var(--text-muted);
+      white-space: nowrap;
+    }
+    .cat-tag {
+      padding: .15rem .55rem; border-radius: 4px;
+      font-size: .72rem;
+      background: var(--neutral-bg); border: 1px solid var(--neutral-bd);
+      color: var(--neutral);
+      white-space: nowrap;
+    }
+    .cat-tag.fact-checker { background: rgba(139,92,246,.1); border-color: rgba(139,92,246,.3); color: #a78bfa; }
+    .cat-tag.agenzia { background: var(--warn-bg); border-color: var(--warn-bd); color: var(--warn); }
+    .paese-flag { font-size: .95rem; }
+
+    /* ===================================================
+       ADMIN PANEL
+    =================================================== */
+    .admin-header {
+      display: flex; align-items: center; gap: .8rem;
+      margin-bottom: 1.4rem;
+    }
+    .admin-badge {
+      padding: .25rem .75rem;
+      background: rgba(139,92,246,.15);
+      border: 1px solid rgba(139,92,246,.35);
+      border-radius: 999px;
+      font-size: .72rem;
+      font-weight: 700;
+      letter-spacing: .05em;
+      color: #a78bfa;
+    }
+    .proposals-list { display: flex; flex-direction: column; gap: .9rem; }
+    .proposal-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 1.2rem 1.4rem;
+      display: flex; align-items: flex-start; gap: 1rem;
+      flex-wrap: wrap;
+    }
+    .proposal-info { flex: 1; min-width: 200px; }
+    .proposal-source { font-weight: 600; margin-bottom: .3rem; }
+    .proposal-scores {
+      display: flex; align-items: center; gap: .5rem;
+      font-size: .85rem; margin-bottom: .4rem;
+    }
+    .score-old { color: var(--text-muted); text-decoration: line-through; }
+    .score-arrow { color: var(--text-muted); }
+    .score-new { font-weight: 600; color: var(--warn); }
+    .proposal-reason { font-size: .82rem; color: var(--text-muted); font-style: italic; }
+    .proposal-actions { display: flex; gap: .5rem; align-items: center; flex-shrink: 0; }
+    .proposals-empty {
+      text-align: center;
+      padding: 3rem 1rem;
+      color: var(--text-muted);
+    }
+    .proposals-empty-icon { font-size: 2.5rem; margin-bottom: .8rem; }
+
+    /* ===================================================
+       SETTINGS MODAL
+    =================================================== */
+    .modal-overlay {
+      display: none;
+      position: fixed; inset: 0;
+      background: rgba(0,0,0,.7);
+      z-index: 200;
+      align-items: center; justify-content: center;
+      padding: 1.5rem;
+    }
+    .modal-overlay.open { display: flex; }
+    .modal {
+      background: var(--surface);
+      border: 1px solid var(--border-light);
+      border-radius: var(--radius-lg);
+      padding: 1.8rem;
+      width: 100%;
+      max-width: 440px;
+      box-shadow: var(--shadow);
+      animation: fadeUp .25s ease;
+    }
+    .modal-title { font-family: var(--font-display); font-size: 1.25rem; margin-bottom: 1.2rem; }
+    .modal-close {
+      float: right;
+      background: transparent; border: none;
+      color: var(--text-muted); font-size: 1.2rem;
+      cursor: pointer; padding: .1rem .3rem;
+      line-height: 1;
+    }
+    .modal-close:hover { color: var(--text); }
+
+    .field { margin-bottom: 1.1rem; }
+    .field-label {
+      display: block;
+      font-size: .8rem; font-weight: 600;
+      text-transform: uppercase; letter-spacing: .05em;
+      color: var(--text-muted); margin-bottom: .4rem;
+    }
+    .field-input-wrap { position: relative; display: flex; }
+    .field-input {
+      width: 100%;
+      background: var(--card);
+      border: 1px solid var(--border-light);
+      border-radius: var(--radius);
+      color: var(--text);
+      font-family: var(--font-body);
+      font-size: .9rem;
+      padding: .6rem .9rem;
+      padding-right: 2.4rem;
+      outline: none;
+      transition: border-color var(--transition);
+    }
+    .field-input:focus { border-color: var(--gold-dim); }
+    .toggle-visibility {
+      position: absolute; right: .6rem; top: 50%; transform: translateY(-50%);
+      background: transparent; border: none;
+      color: var(--text-muted); cursor: pointer;
+      font-size: .9rem; padding: .2rem;
+    }
+    .toggle-visibility:hover { color: var(--text); }
+    .field-hint { font-size: .77rem; color: var(--text-muted); margin-top: .35rem; }
+
+    /* ===================================================
+       FOOTER
+    =================================================== */
+    .site-footer {
+      border-top: 1px solid var(--border);
+      background: var(--bg-2);
+      padding: 1.2rem 0;
+    }
+    .site-footer .inner {
+      display: flex; align-items: center; justify-content: space-between;
+      flex-wrap: wrap; gap: .8rem;
+    }
+    .footer-text { font-size: .78rem; color: var(--text-muted); }
+    .footer-version {
+      font-size: .72rem;
+      background: var(--card);
+      border: 1px solid var(--border);
+      padding: .2rem .6rem;
+      border-radius: 999px;
+      color: var(--text-muted);
+    }
+
+    /* ===================================================
+       RESPONSIVE
+    =================================================== */
+    @media (max-width: 640px) {
+      .input-label { font-size: 1.6rem; }
+      .diffusione-grid { grid-template-columns: 1fr 1fr; }
+      .analyze-bar { flex-direction: column; align-items: stretch; }
+      #analyze-btn { width: 100%; }
+      .proposal-card { flex-direction: column; }
+    }
+    @media (max-width: 400px) {
+      .header-tagline { display: none; }
+      .diffusione-grid { grid-template-columns: 1fr; }
+    }
+
+    /* ===================================================
+       UTILITIES
+    =================================================== */
+    .visually-hidden { display: none !important; }
+    .text-muted { color: var(--text-muted); }
+    .mt-1 { margin-top: .5rem; }
+    .mt-2 { margin-top: 1rem; }
+    .separator {
+      height: 1px; background: var(--border);
+      margin: 1.5rem 0;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ================================================
+       SETTINGS MODAL
+  ================================================ -->
+  <div class="modal-overlay" id="settings-modal">
+    <div class="modal">
+      <button class="modal-close" onclick="closeSettings()" title="Chiudi">&times;</button>
+      <h2 class="modal-title">Impostazioni</h2>
+
+      <div class="field">
+        <label class="field-label" for="api-key-input">Anthropic API Key</label>
+        <div class="field-input-wrap">
+          <input type="password" id="api-key-input" class="field-input"
+            placeholder="sk-ant-api03-..." autocomplete="off" spellcheck="false">
+          <button class="toggle-visibility" onclick="toggleApiKeyVisibility()" title="Mostra/nascondi">
+            <span id="eye-icon">👁</span>
+          </button>
+        </div>
+        <p class="field-hint">La chiave è salvata solo nel tuo browser (localStorage). Non viene mai inviata a server di terzi.</p>
+      </div>
+
+      <button class="btn btn--primary" onclick="saveSettings()" style="width:100%;margin-top:.5rem;">
+        Salva impostazioni
+      </button>
+    </div>
+  </div>
+
+  <!-- ================================================
+       HEADER
+  ================================================ -->
+  <header class="site-header">
+    <div class="container--wide inner">
+      <div class="header-brand">
+        <div class="header-logo">🔎</div>
+        <div>
+          <div class="header-title">FactChecker AI</div>
+          <div class="header-tagline">Analisi della credibilità assistita dall'AI</div>
+        </div>
+      </div>
+      <div class="header-actions">
+        <button class="btn btn--ghost" onclick="openSettings()">⚙️ Impostazioni</button>
+      </div>
+    </div>
+  </header>
+
+  <!-- ================================================
+       TAB NAV
+  ================================================ -->
+  <nav class="tab-nav">
+    <div class="container--wide inner">
+      <button class="tab-btn active" id="tab-analyze" onclick="showTab('analyze')">📰 Analizza</button>
+      <button class="tab-btn" id="tab-sources" onclick="showTab('sources')">🗂 DB Fonti</button>
+      <button class="tab-btn visually-hidden" id="tab-admin" onclick="showTab('admin')">🛡 Admin</button>
+    </div>
+  </nav>
+
+  <!-- ================================================
+       MAIN
+  ================================================ -->
+  <main>
+
+    <!-- === PANEL: ANALIZZA === -->
+    <div class="panel active" id="panel-analyze">
+      <div class="container">
+
+        <!-- Input Section -->
+        <section class="input-section">
+          <h1 class="input-label">Verifica una notizia</h1>
+          <p class="input-sublabel">Incolla il testo, un URL o carica un'immagine. L'AI cercherà fonti e valuterà la credibilità.</p>
+
+          <div class="input-wrapper" id="input-wrapper">
+            <textarea id="news-input"
+              placeholder="Incolla qui il testo di una notizia, un URL (https://...) o scrivi un'affermazione da verificare..."
+              oninput="onInputChange()"></textarea>
+            <div class="input-footer">
+              <span class="input-type-badge" id="input-type-badge">✏️ Testo</span>
+              <div class="input-footer-actions">
+                <button class="btn btn--sm" onclick="document.getElementById('image-file').click()" title="Carica immagine">
+                  📷 Immagine
+                </button>
+                <input type="file" id="image-file" accept="image/*" style="display:none" onchange="onImageSelect(event)">
+              </div>
+            </div>
+          </div>
+
+          <!-- Image preview -->
+          <div id="image-preview-container">
+            <div class="image-preview-inner">
+              <img id="image-preview" src="" alt="Anteprima immagine">
+              <button class="remove-image-btn" onclick="removeImage()" title="Rimuovi immagine">×</button>
+            </div>
+            <p class="text-muted mt-1" style="font-size:.78rem">Immagine caricata — verrà analizzata con vision AI</p>
+          </div>
+
+          <div class="analyze-bar">
+            <button class="btn btn--primary" id="analyze-btn" onclick="onAnalyzeClick()">
+              🔍 Analizza
+            </button>
+            <span style="font-size:.8rem; color:var(--text-muted)">Powered by Claude + Web Search</span>
+          </div>
+        </section>
+
+        <!-- Error Section -->
+        <div id="error-section">
+          <div class="error-title" id="error-title">Errore</div>
+          <div class="error-message" id="error-message"></div>
+        </div>
+
+        <!-- Loading Section -->
+        <section id="loading-section">
+          <div class="loading-spinner"></div>
+          <p class="loading-title">Analisi in corso…</p>
+          <ul class="loading-steps" id="loading-steps">
+            <li class="loading-step" data-step="0"><span class="step-icon">📖</span> Lettura del contenuto</li>
+            <li class="loading-step" data-step="1"><span class="step-icon">🧩</span> Estrazione affermazioni principali</li>
+            <li class="loading-step" data-step="2"><span class="step-icon">🌐</span> Ricerca fonti sul web</li>
+            <li class="loading-step" data-step="3"><span class="step-icon">⚖️</span> Valutazione attendibilità</li>
+            <li class="loading-step" data-step="4"><span class="step-icon">📊</span> Elaborazione risultati</li>
+          </ul>
+        </section>
+
+        <!-- Results Section -->
+        <section id="results-section">
+
+          <!-- Results header -->
+          <div class="results-header">
+            <div>
+              <div class="results-title" id="results-headline">Risultati analisi</div>
+              <div id="results-fonte-wrap"></div>
+            </div>
+            <div>
+              <button class="btn btn--sm" onclick="resetAnalysis()">↩ Nuova analisi</button>
+            </div>
+          </div>
+
+          <!-- Card 1: Diffusione -->
+          <div class="result-card" id="card-diffusione">
+            <div class="result-card-header">
+              <div class="result-card-num">1</div>
+              <h2 class="result-card-title">Diffusione &amp; Coverage</h2>
+            </div>
+            <div id="diffusione-content"></div>
+          </div>
+
+          <!-- Card 2: Conferme / Smentite -->
+          <div class="result-card" id="card-claims">
+            <div class="result-card-header">
+              <div class="result-card-num">2</div>
+              <h2 class="result-card-title">Conferme vs Smentite</h2>
+            </div>
+            <div id="claims-content"></div>
+          </div>
+
+          <!-- Card 3: Attendibilità -->
+          <div class="result-card" id="card-attendibilita">
+            <div class="result-card-header">
+              <div class="result-card-num">3</div>
+              <h2 class="result-card-title">Score di Attendibilità</h2>
+            </div>
+            <div id="attendibilita-content"></div>
+          </div>
+
+        </section>
+
+      </div>
+    </div><!-- /panel-analyze -->
+
+    <!-- === PANEL: DB FONTI === -->
+    <div class="panel" id="panel-sources">
+      <div class="container--wide">
+
+        <div class="sources-header">
+          <div>
+            <h2 class="sources-title">Database Fonti</h2>
+            <p class="sources-subtitle">Score di affidabilità e bias politico delle principali testate giornalistiche</p>
+          </div>
+          <div style="font-size:.82rem; color:var(--text-muted);">
+            <span id="sources-count">20</span> fonti · v1 (read-only)
+          </div>
+        </div>
+
+        <div class="sources-filters">
+          <select class="filter-select" id="filter-categoria" onchange="renderSourcesDB()">
+            <option value="all">Tutte le categorie</option>
+            <option value="generalista">Generalista</option>
+            <option value="agenzia">Agenzia</option>
+            <option value="fact-checker">Fact-checker</option>
+            <option value="economia">Economia</option>
+          </select>
+          <select class="filter-select" id="filter-paese" onchange="renderSourcesDB()">
+            <option value="all">Tutti i paesi</option>
+            <option value="IT">🇮🇹 Italia</option>
+            <option value="INT">🌍 Internazionale</option>
+            <option value="UK">🇬🇧 UK</option>
+            <option value="US">🇺🇸 USA</option>
+            <option value="FR">🇫🇷 Francia</option>
+            <option value="DE">🇩🇪 Germania</option>
+            <option value="QA">🇶🇦 Qatar</option>
+            <option value="RU">🇷🇺 Russia</option>
+          </select>
+        </div>
+
+        <div class="sources-table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Testata</th>
+                <th>Dominio</th>
+                <th>Categoria</th>
+                <th>Paese</th>
+                <th>Score</th>
+                <th>Bias</th>
+              </tr>
+            </thead>
+            <tbody id="sources-table-body">
+              <!-- Rendered by JS -->
+            </tbody>
+          </table>
+        </div>
+
+      </div>
+    </div><!-- /panel-sources -->
+
+    <!-- === PANEL: ADMIN === -->
+    <div class="panel" id="panel-admin">
+      <div class="container">
+
+        <div class="admin-header">
+          <h2 style="font-family:var(--font-display); font-size:1.4rem;">Pannello Admin</h2>
+          <span class="admin-badge">ADMIN</span>
+        </div>
+
+        <p style="font-size:.88rem; color:var(--text-muted); margin-bottom:1.4rem;">
+          Proposte di modifica score generate dall'AI durante le analisi. Approvando, lo score viene aggiornato nel localStorage (sovrascriverà il valore hardcodato per le analisi future).
+        </p>
+
+        <div class="proposals-list" id="proposals-list">
+          <!-- Rendered by JS -->
+        </div>
+
+      </div>
+    </div><!-- /panel-admin -->
+
+  </main>
+
+  <!-- ================================================
+       FOOTER
+  ================================================ -->
+  <footer class="site-footer">
+    <div class="container--wide inner">
+      <p class="footer-text">FactChecker AI — per uso personale e di ricerca. Non sostituisce il giudizio critico.</p>
+      <span class="footer-version">v1.0 · client-side only</span>
+    </div>
+  </footer>
+
+
+  <!-- ================================================
+       JAVASCRIPT
+  ================================================ -->
+  <script>
+    'use strict';
+
+    /* ===================================================
+       CONSTANTS — SYSTEM PROMPT
+    =================================================== */
+    const SYSTEM_PROMPT = `Sei un fact-checker professionale. Il tuo compito è analizzare notizie e valutarne la credibilità in modo rigoroso e imparziale.
+
+Quando ricevi una notizia (testo, URL o immagine):
+1. Estrai le affermazioni principali verificabili (max 5 claim)
+2. Per ogni claim, cerca attivamente fonti sul web usando il web search tool
+3. Classifica ogni fonte trovata come: CONFERMA / SMENTISCE / NEUTRO
+4. Valuta la qualità di ogni fonte (testata nota, istituzione, blog, fonte anonima, ecc.)
+5. Identifica il dominio/testata di origine della notizia originale se presente
+
+Rispondi ESCLUSIVAMENTE con un oggetto JSON valido, senza testo aggiuntivo, senza backtick markdown.
+Schema:
+{
+  "notizia_originale": {
+    "titolo_estratto": "string",
+    "fonte_originale": "string o null",
+    "dominio_originale": "string o null"
+  },
+  "claims": [
+    {
+      "id": 1,
+      "testo": "string",
+      "fonti": [
+        {
+          "nome": "string",
+          "dominio": "string",
+          "url": "string",
+          "posizione": "CONFERMA | SMENTISCE | NEUTRO",
+          "snippet": "string breve",
+          "qualita_stimata": "alta | media | bassa"
+        }
+      ],
+      "verdetto_claim": "CONFERMATA | SMENTITA | CONTROVERSA | NON_VERIFICABILE",
+      "confidenza": 0-100
+    }
+  ],
+  "analisi_globale": {
+    "n_fonti_totali": number,
+    "n_confermano": number,
+    "n_smentiscono": number,
+    "n_neutre": number,
+    "diffusione": "alta | media | bassa | virale",
+    "score_attendibilita": 0-100,
+    "livello_certezza_analisi": "alta | media | bassa",
+    "motivazione_score": "string (2-3 frasi)",
+    "segnalazioni": ["array di warning opzionali"]
+  }
+}`;
+
+    /* ===================================================
+       CONSTANTS — SOURCES DATABASE
+    =================================================== */
+    const SOURCES_DB = [
+      // Italiane
+      { id: 1,  nome: "Corriere della Sera",  dominio: "corriere.it",           categoria: "generalista",  score_official: 82, paese: "IT",  bias_politico: "centro" },
+      { id: 2,  nome: "La Repubblica",        dominio: "repubblica.it",         categoria: "generalista",  score_official: 80, paese: "IT",  bias_politico: "centro-sinistra" },
+      { id: 3,  nome: "Il Sole 24 Ore",       dominio: "ilsole24ore.com",       categoria: "economia",     score_official: 85, paese: "IT",  bias_politico: "centro" },
+      { id: 4,  nome: "ANSA",                 dominio: "ansa.it",               categoria: "agenzia",      score_official: 88, paese: "IT",  bias_politico: "neutro" },
+      { id: 5,  nome: "Pagella Politica",     dominio: "pagellapolitica.it",    categoria: "fact-checker", score_official: 92, paese: "IT",  bias_politico: "neutro" },
+      { id: 6,  nome: "Open Online",          dominio: "open.online",           categoria: "fact-checker", score_official: 85, paese: "IT",  bias_politico: "neutro" },
+      { id: 7,  nome: "Il Giornale",          dominio: "ilgiornale.it",         categoria: "generalista",  score_official: 65, paese: "IT",  bias_politico: "destra" },
+      { id: 8,  nome: "Libero",               dominio: "liberoquotidiano.it",   categoria: "generalista",  score_official: 55, paese: "IT",  bias_politico: "destra" },
+      { id: 9,  nome: "Il Fatto Quotidiano",  dominio: "ilfattoquotidiano.it",  categoria: "generalista",  score_official: 62, paese: "IT",  bias_politico: "sinistra" },
+      { id: 10, nome: "TgCom24",              dominio: "tgcom24.mediaset.it",   categoria: "generalista",  score_official: 72, paese: "IT",  bias_politico: "centro-destra" },
+      // Internazionali
+      { id: 11, nome: "Reuters",              dominio: "reuters.com",           categoria: "agenzia",      score_official: 94, paese: "INT", bias_politico: "neutro" },
+      { id: 12, nome: "Associated Press",     dominio: "apnews.com",            categoria: "agenzia",      score_official: 93, paese: "INT", bias_politico: "neutro" },
+      { id: 13, nome: "BBC",                  dominio: "bbc.com",               categoria: "generalista",  score_official: 88, paese: "UK",  bias_politico: "centro" },
+      { id: 14, nome: "The Guardian",         dominio: "theguardian.com",       categoria: "generalista",  score_official: 82, paese: "UK",  bias_politico: "sinistra" },
+      { id: 15, nome: "Snopes",               dominio: "snopes.com",            categoria: "fact-checker", score_official: 90, paese: "US",  bias_politico: "neutro" },
+      { id: 16, nome: "PolitiFact",           dominio: "politifact.com",        categoria: "fact-checker", score_official: 88, paese: "US",  bias_politico: "neutro" },
+      { id: 17, nome: "Le Monde",             dominio: "lemonde.fr",            categoria: "generalista",  score_official: 85, paese: "FR",  bias_politico: "centro-sinistra" },
+      { id: 18, nome: "Der Spiegel",          dominio: "spiegel.de",            categoria: "generalista",  score_official: 83, paese: "DE",  bias_politico: "centro" },
+      { id: 19, nome: "Al Jazeera",           dominio: "aljazeera.com",         categoria: "generalista",  score_official: 70, paese: "QA",  bias_politico: "centro" },
+      { id: 20, nome: "RT",                   dominio: "rt.com",                categoria: "generalista",  score_official: 22, paese: "RU",  bias_politico: "filorusso" }
+    ];
+
+    const LOADING_STEPS_TEXT = [
+      "Lettura del contenuto",
+      "Estrazione affermazioni principali",
+      "Ricerca fonti sul web",
+      "Valutazione attendibilità",
+      "Elaborazione risultati"
+    ];
+
+    /* ===================================================
+       STATE
+    =================================================== */
+    let state = {
+      apiKey: '',
+      currentAnalysis: null,
+      imageData: null,       // base64 string
+      imageType: null,       // mime type
+      activeTab: 'analyze',
+      loadingTimer: null
+    };
+
+    /* ===================================================
+       STORAGE HELPERS
+    =================================================== */
+    function loadApiKey() {
+      return localStorage.getItem('factchecker_api_key') || '';
+    }
+    function saveApiKey(key) {
+      localStorage.setItem('factchecker_api_key', key);
+    }
+    function loadProposals() {
+      try { return JSON.parse(localStorage.getItem('factchecker_proposals') || '[]'); }
+      catch { return []; }
+    }
+    function saveProposals(proposals) {
+      localStorage.setItem('factchecker_proposals', JSON.stringify(proposals));
+    }
+    // Per override score da admin approvals
+    function loadScoreOverrides() {
+      try { return JSON.parse(localStorage.getItem('factchecker_score_overrides') || '{}'); }
+      catch { return {}; }
+    }
+    function saveScoreOverrides(overrides) {
+      localStorage.setItem('factchecker_score_overrides', JSON.stringify(overrides));
+    }
+
+    /* ===================================================
+       SOURCE DB HELPERS
+    =================================================== */
+    /**
+     * Cerca una fonte nel DB per dominio (corrispondenza parziale).
+     * Applica eventuali override di score da admin.
+     */
+    function matchSourceDB(dominio) {
+      if (!dominio) return null;
+      const d = dominio.toLowerCase().replace(/^www\./, '');
+      const found = SOURCES_DB.find(s => {
+        const sd = s.dominio.toLowerCase().replace(/^www\./, '');
+        return d === sd || d.endsWith('.' + sd) || sd.endsWith('.' + d) || d.includes(sd) || sd.includes(d);
+      });
+      if (!found) return null;
+      // Apply score override if exists
+      const overrides = loadScoreOverrides();
+      const score = overrides[found.id] !== undefined ? overrides[found.id] : found.score_official;
+      return { ...found, score_effective: score };
+    }
+
+    /** Converte qualita_stimata AI in range score */
+    function qualitaToScore(q) {
+      if (q === 'alta')  return 85;
+      if (q === 'media') return 60;
+      return 35;
+    }
+
+    /**
+     * Dopo ogni analisi, genera proposte di modifica score se l'AI
+     * ha valutato diversamente una fonte presente nel DB.
+     */
+    function generateProposals(analysis) {
+      if (!analysis || !analysis.claims) return;
+      const proposals = loadProposals();
+      const overrides = loadScoreOverrides();
+      const threshold = 20; // differenza minima per generare proposta
+
+      analysis.claims.forEach(claim => {
+        (claim.fonti || []).forEach(fonte => {
+          const dbEntry = matchSourceDB(fonte.dominio);
+          if (!dbEntry) return;
+          const aiScore = qualitaToScore(fonte.qualita_stimata);
+          const currentScore = overrides[dbEntry.id] !== undefined ? overrides[dbEntry.id] : dbEntry.score_official;
+          if (Math.abs(aiScore - currentScore) >= threshold) {
+            // Evita duplicati per lo stesso dominio
+            const exists = proposals.find(p => p.sourceId === dbEntry.id && p.status === 'pending');
+            if (!exists) {
+              proposals.push({
+                id: Date.now() + Math.random(),
+                sourceId: dbEntry.id,
+                sourceName: dbEntry.nome,
+                sourceDominio: dbEntry.dominio,
+                scoreAttuale: currentScore,
+                scoreProposto: aiScore,
+                motivo: `Durante l'analisi la fonte è stata classificata come qualità "${fonte.qualita_stimata}" per il claim: "${(claim.testo || '').slice(0, 80)}..."`,
+                status: 'pending',
+                timestamp: new Date().toISOString()
+              });
+            }
+          }
+        });
+      });
+
+      saveProposals(proposals);
+    }
+
+    /* ===================================================
+       INPUT HELPERS
+    =================================================== */
+    function detectInputType(value) {
+      if (state.imageData) return 'image';
+      if (!value || !value.trim()) return 'text';
+      const trimmed = value.trim();
+      if (/^https?:\/\//i.test(trimmed)) return 'url';
+      return 'text';
+    }
+
+    function onInputChange() {
+      updateInputTypeBadge();
+    }
+
+    function updateInputTypeBadge() {
+      const val = document.getElementById('news-input').value;
+      const type = detectInputType(val);
+      const badge = document.getElementById('input-type-badge');
+      badge.className = 'input-type-badge';
+      if (type === 'url') {
+        badge.className += ' type-url';
+        badge.textContent = '🔗 URL';
+      } else if (type === 'image') {
+        badge.className += ' type-image';
+        badge.textContent = '🖼 Immagine';
+      } else {
+        badge.textContent = '✏️ Testo';
+      }
+    }
+
+    function onImageSelect(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        state.imageData = e.target.result.split(',')[1]; // base64 without prefix
+        state.imageType = file.type || 'image/jpeg';
+        document.getElementById('image-preview').src = e.target.result;
+        document.getElementById('image-preview-container').style.display = 'block';
+        updateInputTypeBadge();
+      };
+      reader.readAsDataURL(file);
+    }
+
+    function removeImage() {
+      state.imageData = null;
+      state.imageType = null;
+      document.getElementById('image-preview-container').style.display = 'none';
+      document.getElementById('image-preview').src = '';
+      document.getElementById('image-file').value = '';
+      updateInputTypeBadge();
+    }
+
+    /* ===================================================
+       BUILD MESSAGES
+    =================================================== */
+    function buildMessages(input, inputType, imageData, imageType) {
+      // Base content depending on type
+      if (inputType === 'image') {
+        const content = [];
+        if (imageData) {
+          content.push({
+            type: 'image',
+            source: {
+              type: 'base64',
+              media_type: imageType || 'image/jpeg',
+              data: imageData
+            }
+          });
+        }
+        // Add any accompanying text context
+        if (input && input.trim()) {
+          content.push({ type: 'text', text: `Analizza questa immagine di una notizia/post. Contesto aggiuntivo fornito dall'utente: ${input.trim()}` });
+        } else {
+          content.push({ type: 'text', text: 'Analizza questa immagine di una notizia o post social. Esegui il fact-checking delle affermazioni visibili.' });
+        }
+        return [{ role: 'user', content }];
+      }
+
+      if (inputType === 'url') {
+        return [{ role: 'user', content: [{ type: 'text', text: `Accedi a questo URL e analizza il contenuto della notizia: ${input.trim()}. Esegui il fact-checking completo usando il web search tool.` }] }];
+      }
+
+      // Default: text
+      return [{ role: 'user', content: [{ type: 'text', text: `Analizza la seguente notizia/affermazione e verificane la veridicità:\n\n${input.trim()}` }] }];
+    }
+
+    /* ===================================================
+       API CALL
+    =================================================== */
+    async function callAPI(messages, apiKey) {
+      const response = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-api-key': apiKey,
+          'anthropic-version': '2023-06-01'
+        },
+        body: JSON.stringify({
+          model: 'claude-sonnet-4-20250514',
+          max_tokens: 8000,
+          system: SYSTEM_PROMPT,
+          tools: [
+            {
+              type: 'web_search_20250305',
+              name: 'web_search',
+              max_uses: 10
+            }
+          ],
+          messages: messages
+        })
+      });
+
+      if (!response.ok) {
+        const errBody = await response.json().catch(() => ({}));
+        const errMsg = errBody?.error?.message || `HTTP ${response.status}`;
+        if (response.status === 401) throw new Error('API key non valida o mancante. Controlla le impostazioni.');
+        if (response.status === 429) throw new Error('Rate limit raggiunto. Attendi qualche secondo e riprova.');
+        if (response.status === 400) throw new Error(`Richiesta non valida: ${errMsg}`);
+        throw new Error(`Errore API: ${errMsg}`);
+      }
+
+      return response.json();
+    }
+
+    /* ===================================================
+       PARSE CLAUDE RESPONSE
+    =================================================== */
+    function parseClaudeResponse(data) {
+      if (!data || !data.content || !Array.isArray(data.content)) {
+        throw new Error('Risposta API non valida o vuota.');
+      }
+
+      // Find the last text block (may be preceded by thinking blocks)
+      const textBlocks = data.content.filter(b => b.type === 'text');
+      if (textBlocks.length === 0) {
+        throw new Error('Nessun blocco testo nella risposta. Claude potrebbe aver usato solo tool calls.');
+      }
+
+      let raw = textBlocks[textBlocks.length - 1].text.trim();
+
+      // Remove markdown code fences if Claude forgot the instructions
+      raw = raw.replace(/^```(?:json)?\s*/i, '').replace(/\s*```\s*$/, '').trim();
+
+      // Try direct parse
+      try {
+        return JSON.parse(raw);
+      } catch (e1) {
+        // Try to extract JSON object with regex
+        const match = raw.match(/\{[\s\S]*\}/);
+        if (match) {
+          try {
+            return JSON.parse(match[0]);
+          } catch (e2) {
+            // Attempt to fix common JSON issues (trailing commas, etc.)
+            const cleaned = match[0]
+              .replace(/,\s*([}\]])/g, '$1')   // trailing commas
+              .replace(/'/g, '"');              // single quotes
+            try {
+              return JSON.parse(cleaned);
+            } catch (e3) {
+              throw new Error('Impossibile parsare il JSON della risposta. Il modello potrebbe aver restituito un formato inatteso.');
+            }
+          }
+        }
+        throw new Error('Nessun JSON trovato nella risposta del modello.');
+      }
+    }
+
+    /* ===================================================
+       MAIN ANALYSIS FUNCTION
+    =================================================== */
+    async function analyzeNews() {
+      const input = document.getElementById('news-input').value.trim();
+      const { imageData, imageType, apiKey } = state;
+
+      if (!apiKey) {
+        openSettings();
+        showError('Inserisci la tua Anthropic API key nelle impostazioni per continuare.');
+        return;
+      }
+
+      const inputType = detectInputType(input);
+
+      if (!input && inputType !== 'image') {
+        showError('Inserisci un testo, un URL o carica un\'immagine da analizzare.');
+        return;
+      }
+      if (inputType === 'image' && !imageData) {
+        showError('Carica un\'immagine da analizzare.');
+        return;
+      }
+
+      // Build messages
+      const messages = buildMessages(input, inputType, imageData, imageType);
+
+      // UI: show loading
+      hideError();
+      hideResults();
+      showLoading(true);
+      startLoadingAnimation();
+
+      try {
+        const data = await callAPI(messages, apiKey);
+        const analysis = parseClaudeResponse(data);
+
+        // Validate minimal structure
+        if (!analysis.claims || !analysis.analisi_globale) {
+          throw new Error('Struttura JSON incompleta nella risposta. Riprova.');
+        }
+
+        state.currentAnalysis = analysis;
+
+        // Generate admin proposals if discrepancies found
+        generateProposals(analysis);
+
+        // Render
+        showLoading(false);
+        renderResults(analysis);
+
+      } catch (err) {
+        showLoading(false);
+        showError(err.message || 'Errore sconosciuto durante l\'analisi.');
+        console.error('[FactChecker] Error:', err);
+      }
+    }
+
+    /* ===================================================
+       LOADING UI
+    =================================================== */
+    function showLoading(show) {
+      document.getElementById('loading-section').style.display = show ? 'block' : 'none';
+      document.getElementById('analyze-btn').disabled = show;
+    }
+
+    function startLoadingAnimation() {
+      const steps = document.querySelectorAll('.loading-step');
+      steps.forEach(s => s.className = 'loading-step');
+      let current = 0;
+
+      function advance() {
+        if (current > 0) steps[current - 1].className = 'loading-step done';
+        if (current < steps.length) {
+          steps[current].className = 'loading-step active';
+          current++;
+          // Stagger: steps take varying time to simulate real process
+          const delays = [800, 1800, 4000, 3000, 1500];
+          state.loadingTimer = setTimeout(advance, delays[current - 1] || 1500);
+        }
+      }
+      advance();
+    }
+
+    function stopLoadingAnimation() {
+      if (state.loadingTimer) { clearTimeout(state.loadingTimer); state.loadingTimer = null; }
+    }
+
+    /* ===================================================
+       RENDER RESULTS
+    =================================================== */
+    function renderResults(analysis) {
+      // Header
+      const notizia = analysis.notizia_originale || {};
+      const headline = document.getElementById('results-headline');
+      const fonteWrap = document.getElementById('results-fonte-wrap');
+
+      headline.innerHTML = `<em>${escHtml(notizia.titolo_estratto || 'Analisi completata')}</em>`;
+      fonteWrap.innerHTML = notizia.fonte_originale
+        ? `<span class="results-fonte">📰 ${escHtml(notizia.fonte_originale)}${notizia.dominio_originale ? ' · ' + escHtml(notizia.dominio_originale) : ''}</span>`
+        : '';
+
+      renderDiffusione(analysis);
+      renderClaims(analysis);
+      renderAttendibilita(analysis);
+
+      document.getElementById('results-section').style.display = 'block';
+    }
+
+    /* --- Section 1: Diffusione --- */
+    function renderDiffusione(analysis) {
+      const g = analysis.analisi_globale;
+      const diffClass = { alta: 'diff-alta', virale: 'diff-virale', media: 'diff-media', bassa: 'diff-bassa' }[g.diffusione] || 'diff-bassa';
+      const diffLabel = { alta: '📈 Alta diffusione', virale: '🔥 Virale', media: '📊 Media diffusione', bassa: '📉 Bassa diffusione' }[g.diffusione] || g.diffusione;
+
+      document.getElementById('diffusione-content').innerHTML = `
+        <div class="diffusione-grid">
+          <div class="diff-stat">
+            <div class="diff-stat-value">${g.n_fonti_totali ?? 0}</div>
+            <div class="diff-stat-label">Fonti trovate</div>
+          </div>
+          <div class="diff-stat">
+            <div class="diff-stat-value">${analysis.claims ? analysis.claims.length : 0}</div>
+            <div class="diff-stat-label">Claim analizzate</div>
+          </div>
+          <div class="diff-stat">
+            <div class="diff-stat-value">${g.n_confermano ?? 0}</div>
+            <div class="diff-stat-label" style="color:var(--confirm)">Confermano</div>
+          </div>
+          <div class="diff-stat">
+            <div class="diff-stat-value">${g.n_smentiscono ?? 0}</div>
+            <div class="diff-stat-label" style="color:var(--deny)">Smentiscono</div>
+          </div>
+        </div>
+        <div style="margin-top:1rem;">
+          <span class="diffusione-badge ${diffClass}">${diffLabel}</span>
+        </div>
+      `;
+    }
+
+    /* --- Section 2: Claims --- */
+    function renderClaims(analysis) {
+      const g = analysis.analisi_globale;
+      const total = (g.n_confermano || 0) + (g.n_smentiscono || 0) + (g.n_neutre || 0);
+      const pConf = total ? Math.round((g.n_confermano / total) * 100) : 0;
+      const pDeny = total ? Math.round((g.n_smentiscono / total) * 100) : 0;
+      const pNeut = 100 - pConf - pDeny;
+
+      const claimsHtml = (analysis.claims || []).map(claim => renderClaimItem(claim)).join('');
+
+      document.getElementById('claims-content').innerHTML = `
+        <div class="claims-bar-wrap">
+          <div class="claims-bar-label">
+            <span>Conferme vs Smentite</span>
+            <span>${g.n_confermano ?? 0} · ${g.n_smentiscono ?? 0} · ${g.n_neutre ?? 0}</span>
+          </div>
+          <div class="claims-bar">
+            <div class="claims-bar-segment seg-confirm" style="width:${pConf}%"></div>
+            <div class="claims-bar-segment seg-deny"    style="width:${pDeny}%"></div>
+            <div class="claims-bar-segment seg-neutral" style="width:${pNeut}%"></div>
+          </div>
+        </div>
+        <div class="claims-counts">
+          <div class="claim-count-item"><div class="cc-dot" style="background:var(--confirm)"></div> <strong>${g.n_confermano ?? 0}</strong> confermano</div>
+          <div class="claim-count-item"><div class="cc-dot" style="background:var(--deny)"></div> <strong>${g.n_smentiscono ?? 0}</strong> smentiscono</div>
+          <div class="claim-count-item"><div class="cc-dot" style="background:var(--neutral)"></div> <strong>${g.n_neutre ?? 0}</strong> neutre</div>
+        </div>
+        <div class="claims-list">${claimsHtml}</div>
+      `;
+    }
+
+    function renderClaimItem(claim) {
+      const verdetto = claim.verdetto_claim || 'NON_VERIFICABILE';
+      const fontiHtml = (claim.fonti || []).map(fonte => renderSourceRow(fonte)).join('');
+
+      return `
+        <div class="claim-item" id="claim-${claim.id}">
+          <div class="claim-header" onclick="toggleClaim(${claim.id})">
+            <div class="claim-num">${claim.id}</div>
+            <div class="claim-text">${escHtml(claim.testo || '')}</div>
+            <span class="claim-verdict verdict-${verdetto}">${verdetto.replace('_', ' ')}</span>
+            <span class="claim-confidence">${claim.confidenza ?? '?'}%</span>
+            <span class="claim-chevron">▶</span>
+          </div>
+          <div class="claim-body">
+            <div class="claim-sources-title">Fonti trovate (${(claim.fonti || []).length})</div>
+            ${fontiHtml || '<p style="font-size:.82rem;color:var(--text-muted);padding:.3rem 0">Nessuna fonte trovata per questa claim.</p>'}
+          </div>
+        </div>
+      `;
+    }
+
+    function renderSourceRow(fonte) {
+      const dbMatch = matchSourceDB(fonte.dominio);
+      const dbBadge = dbMatch
+        ? `<span class="source-db-match" title="Score DB: ${dbMatch.score_effective}">⭐ DB ${dbMatch.score_effective}</span>`
+        : '';
+      const qClass = { alta: 'q-alta', media: 'q-media', bassa: 'q-bassa' }[fonte.qualita_stimata] || 'q-media';
+
+      return `
+        <div class="source-row">
+          <span class="source-pos-badge pos-${fonte.posizione}">${fonte.posizione}</span>
+          <div class="source-info">
+            <div>
+              <a class="source-name-link" href="${escHtml(fonte.url || '#')}" target="_blank" rel="noopener noreferrer">
+                ${escHtml(fonte.nome || fonte.dominio || 'Fonte sconosciuta')}
+              </a>
+              <span style="color:var(--text-muted);font-size:.78rem;"> · ${escHtml(fonte.dominio || '')}</span>
+            </div>
+            ${fonte.snippet ? `<div class="source-snippet">${escHtml(fonte.snippet)}</div>` : ''}
+          </div>
+          <span class="source-quality ${qClass}">${fonte.qualita_stimata || '?'}</span>
+          ${dbBadge}
+        </div>
+      `;
+    }
+
+    function toggleClaim(id) {
+      const el = document.getElementById(`claim-${id}`);
+      if (el) el.classList.toggle('open');
+    }
+
+    /* --- Section 3: Attendibilità --- */
+    function renderAttendibilita(analysis) {
+      const g = analysis.analisi_globale;
+      const score = g.score_attendibilita ?? 0;
+      const semaforo = score >= 70 ? '🟢' : score >= 40 ? '🟡' : '🔴';
+      const certClass = { alta: 'cert-alta', media: 'cert-media', bassa: 'cert-bassa' }[g.livello_certezza_analisi] || 'cert-media';
+      const certLabel = { alta: '✓ Alta certezza', media: '~ Media certezza', bassa: '⚠ Bassa certezza' }[g.livello_certezza_analisi] || g.livello_certezza_analisi;
+
+      // Build gauge color based on score
+      const gaugeColor = score >= 70 ? 'var(--confirm)' : score >= 40 ? 'var(--warn)' : 'var(--deny)';
+      // Semicircle arc length: radius 75, path spans 180°, circumference = π*75 ≈ 235
+      const arcLen = 235;
+      const filled = (score / 100) * arcLen;
+
+      const warningsHtml = (g.segnalazioni && g.segnalazioni.length)
+        ? `<div class="detail-block">
+            <div class="detail-label">Segnalazioni</div>
+            <ul class="warnings-list">
+              ${g.segnalazioni.map(w => `<li class="warning-item"><span class="warning-icon">⚠</span>${escHtml(w)}</li>`).join('')}
+            </ul>
+          </div>`
+        : '';
+
+      document.getElementById('attendibilita-content').innerHTML = `
+        <div class="attendibilita-layout">
+          <div class="gauge-wrap">
+            <svg class="gauge-svg" viewBox="0 0 200 115" role="img" aria-label="Score attendibilità: ${score}/100">
+              <!-- Track arc -->
+              <path d="M 20 100 A 80 80 0 0 1 180 100"
+                fill="none" stroke="var(--border-light)" stroke-width="14" stroke-linecap="round"/>
+              <!-- Filled arc -->
+              <path d="M 20 100 A 80 80 0 0 1 180 100"
+                fill="none" stroke="${gaugeColor}" stroke-width="14" stroke-linecap="round"
+                stroke-dasharray="${filled} ${arcLen}"
+                style="transition: stroke-dasharray .8s ease"/>
+              <!-- Score number -->
+              <text x="100" y="80" text-anchor="middle"
+                font-family="'Playfair Display', serif"
+                font-size="38" font-weight="700"
+                fill="var(--text)">${score}</text>
+              <text x="100" y="100" text-anchor="middle"
+                font-size="11" fill="var(--text-muted)"
+                font-family="'Source Sans 3', sans-serif"
+                letter-spacing="0.06em">ATTENDIBILITÀ</text>
+            </svg>
+            <div class="gauge-semaforo">${semaforo}</div>
+            <div class="gauge-label">su 100</div>
+          </div>
+
+          <div class="attendibilita-details">
+            <div class="detail-block">
+              <div class="detail-label">Certezza dell'analisi</div>
+              <span class="certezza-badge ${certClass}">${certLabel}</span>
+            </div>
+            <div class="detail-block">
+              <div class="detail-label">Motivazione</div>
+              <div class="detail-value">${escHtml(g.motivazione_score || '—')}</div>
+            </div>
+            ${warningsHtml}
+          </div>
+        </div>
+      `;
+    }
+
+    /* ===================================================
+       RENDER SOURCES DB
+    =================================================== */
+    function renderSourcesDB() {
+      const cat = document.getElementById('filter-categoria').value;
+      const paese = document.getElementById('filter-paese').value;
+      const overrides = loadScoreOverrides();
+
+      let filtered = SOURCES_DB.filter(s => {
+        if (cat !== 'all' && s.categoria !== cat) return false;
+        if (paese !== 'all' && s.paese !== paese) return false;
+        return true;
+      });
+
+      const flagMap = { IT:'🇮🇹', INT:'🌍', UK:'🇬🇧', US:'🇺🇸', FR:'🇫🇷', DE:'🇩🇪', QA:'🇶🇦', RU:'🇷🇺' };
+      const catClass = { 'fact-checker': 'fact-checker', 'agenzia': 'agenzia' };
+
+      const rows = filtered.map(s => {
+        const score = overrides[s.id] !== undefined ? overrides[s.id] : s.score_official;
+        const pct = score;
+        const barColor = pct >= 70 ? 'var(--confirm)' : pct >= 45 ? 'var(--warn)' : 'var(--deny)';
+        const flag = flagMap[s.paese] || '🌐';
+        const cc = catClass[s.categoria] || '';
+
+        return `<tr>
+          <td style="font-weight:600; color:var(--text)">${escHtml(s.nome)}</td>
+          <td><a href="https://${escHtml(s.dominio)}" target="_blank" rel="noopener" style="font-size:.82rem; color:var(--gold-dim)">${escHtml(s.dominio)}</a></td>
+          <td><span class="cat-tag ${cc}">${escHtml(s.categoria)}</span></td>
+          <td><span class="paese-flag">${flag}</span> <span style="font-size:.78rem;">${s.paese}</span></td>
+          <td>
+            <div class="source-score-bar">
+              <div class="score-bar-bg">
+                <div class="score-bar-fill" style="width:${pct}%; background:${barColor}"></div>
+              </div>
+              <span class="score-num" style="color:${barColor}">${score}</span>
+            </div>
+          </td>
+          <td><span class="bias-tag">${escHtml(s.bias_politico)}</span></td>
+        </tr>`;
+      }).join('');
+
+      document.getElementById('sources-table-body').innerHTML = rows || '<tr><td colspan="6" style="text-align:center;padding:2rem;color:var(--text-muted)">Nessuna fonte corrisponde ai filtri selezionati.</td></tr>';
+      document.getElementById('sources-count').textContent = filtered.length;
+    }
+
+    /* ===================================================
+       RENDER ADMIN PANEL
+    =================================================== */
+    function renderAdminPanel() {
+      const proposals = loadProposals().filter(p => p.status === 'pending');
+      const list = document.getElementById('proposals-list');
+
+      if (!proposals.length) {
+        list.innerHTML = `
+          <div class="proposals-empty">
+            <div class="proposals-empty-icon">✅</div>
+            <p>Nessuna proposta di modifica in attesa.</p>
+            <p style="font-size:.82rem;margin-top:.3rem;">Le proposte vengono generate automaticamente quando l'AI valuta diversamente una fonte presente nel DB.</p>
+          </div>`;
+        return;
+      }
+
+      list.innerHTML = proposals.map(p => `
+        <div class="proposal-card" id="proposal-${p.id}">
+          <div class="proposal-info">
+            <div class="proposal-source">📰 ${escHtml(p.sourceName)} <span style="color:var(--text-muted);font-size:.8rem">· ${escHtml(p.sourceDominio)}</span></div>
+            <div class="proposal-scores">
+              <span class="score-old">${p.scoreAttuale}</span>
+              <span class="score-arrow">→</span>
+              <span class="score-new">${p.scoreProposto}</span>
+            </div>
+            <div class="proposal-reason">${escHtml(p.motivo)}</div>
+          </div>
+          <div class="proposal-actions">
+            <button class="btn btn--sm btn--approve" onclick="approveProposal('${p.id}')">✓ Approva</button>
+            <button class="btn btn--sm btn--reject" onclick="rejectProposal('${p.id}')">✕ Rigetta</button>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    function approveProposal(id) {
+      const proposals = loadProposals();
+      const proposal = proposals.find(p => String(p.id) === String(id));
+      if (!proposal) return;
+
+      proposal.status = 'approved';
+      saveProposals(proposals);
+
+      // Apply score override
+      const overrides = loadScoreOverrides();
+      overrides[proposal.sourceId] = proposal.scoreProposto;
+      saveScoreOverrides(overrides);
+
+      renderAdminPanel();
+    }
+
+    function rejectProposal(id) {
+      const proposals = loadProposals();
+      const idx = proposals.findIndex(p => String(p.id) === String(id));
+      if (idx !== -1) {
+        proposals[idx].status = 'rejected';
+        saveProposals(proposals);
+      }
+      renderAdminPanel();
+    }
+
+    /* ===================================================
+       UI STATE HELPERS
+    =================================================== */
+    function showError(msg, title = 'Errore') {
+      document.getElementById('error-title').textContent = title;
+      document.getElementById('error-message').textContent = msg;
+      document.getElementById('error-section').style.display = 'block';
+    }
+    function hideError() {
+      document.getElementById('error-section').style.display = 'none';
+    }
+    function hideResults() {
+      document.getElementById('results-section').style.display = 'none';
+    }
+    function resetAnalysis() {
+      hideResults();
+      hideError();
+      state.currentAnalysis = null;
+      document.getElementById('news-input').value = '';
+      removeImage();
+      document.getElementById('analyze-btn').disabled = false;
+    }
+
+    function onAnalyzeClick() {
+      hideError();
+      analyzeNews();
+    }
+
+    /* ===================================================
+       TAB NAVIGATION
+    =================================================== */
+    function showTab(name) {
+      state.activeTab = name;
+      document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+      document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+      document.getElementById(`panel-${name}`).classList.add('active');
+      document.getElementById(`tab-${name}`).classList.add('active');
+
+      if (name === 'sources') renderSourcesDB();
+      if (name === 'admin')   renderAdminPanel();
+    }
+
+    /* ===================================================
+       SETTINGS MODAL
+    =================================================== */
+    function openSettings() {
+      document.getElementById('api-key-input').value = state.apiKey;
+      document.getElementById('settings-modal').classList.add('open');
+    }
+    function closeSettings() {
+      document.getElementById('settings-modal').classList.remove('open');
+    }
+    function saveSettings() {
+      const key = document.getElementById('api-key-input').value.trim();
+      state.apiKey = key;
+      saveApiKey(key);
+      closeSettings();
+    }
+    function toggleApiKeyVisibility() {
+      const input = document.getElementById('api-key-input');
+      const icon  = document.getElementById('eye-icon');
+      if (input.type === 'password') {
+        input.type = 'text';
+        icon.textContent = '🙈';
+      } else {
+        input.type = 'password';
+        icon.textContent = '👁';
+      }
+    }
+
+    // Close modal on overlay click
+    document.getElementById('settings-modal').addEventListener('click', function(e) {
+      if (e.target === this) closeSettings();
+    });
+
+    /* ===================================================
+       UTILITY
+    =================================================== */
+    function escHtml(str) {
+      if (str == null) return '';
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+    }
+
+    /* ===================================================
+       INIT
+    =================================================== */
+    function init() {
+      // Load persisted API key
+      state.apiKey = loadApiKey();
+
+      // Check for ?admin=true in URL
+      const params = new URLSearchParams(window.location.search);
+      if (params.get('admin') === 'true') {
+        document.getElementById('tab-admin').classList.remove('visually-hidden');
+      }
+
+      // Initial source DB render (done lazily on tab open, but prepare count)
+      document.getElementById('sources-count').textContent = SOURCES_DB.length;
+
+      // Show API key prompt if not set
+      if (!state.apiKey) {
+        setTimeout(() => {
+          showError(
+            'Nessuna API key configurata. Clicca su "Impostazioni" in alto a destra per aggiungere la tua Anthropic API key.',
+            '🔑 Configurazione richiesta'
+          );
+        }, 600);
+      }
+
+      console.log('[FactChecker AI] v1.0 — client-side only. Pronto.');
+    }
+
+    window.addEventListener('DOMContentLoaded', init);
+  </script>
+</body>
+</html>
