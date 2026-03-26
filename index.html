@@ -2518,9 +2518,8 @@ Schema:
         }, 600);
       }
 
-      // Versione: aggiornata ad ogni deploy
-      const BUILD_DATE = '2026.03.26';
-      document.getElementById('footer-version').textContent = `v1.0 · Build ${BUILD_DATE}`;
+      // Versione: build number = numero progressivo di commit
+      document.getElementById('footer-version').textContent = `v1.1 · Build #11`;
 
       console.log('[FactChecker AI] v1.0 — Pronto.');
     }
