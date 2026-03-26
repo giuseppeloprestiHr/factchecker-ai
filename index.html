@@ -1848,7 +1848,7 @@ Schema:
       const fontiHtml = (claim.fonti || []).map(fonte => renderSourceRow(fonte)).join('');
 
       return `
-        <div class="claim-item" id="claim-${claim.id}">
+        <div class="claim-item open" id="claim-${claim.id}">
           <div class="claim-header" onclick="toggleClaim(${claim.id})">
             <div class="claim-num">${claim.id}</div>
             <div class="claim-text">${escHtml(claim.testo || '')}</div>
