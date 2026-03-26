@@ -835,10 +835,101 @@
     .text-muted { color: var(--text-muted); }
     .mt-1 { margin-top: .5rem; }
     .mt-2 { margin-top: 1rem; }
-    .separator {
-      height: 1px; background: var(--border);
-      margin: 1.5rem 0;
+    .separator { height: 1px; background: var(--border); margin: 1.5rem 0; }
+
+    /* ===================================================
+       FONTE NON CENSITA
+    =================================================== */
+    .source-not-censita {
+      font-size: .7rem; font-weight: 600; letter-spacing: .04em;
+      background: rgba(251,191,36,.12); border: 1px solid var(--warn-bd);
+      color: var(--warn); padding: .15rem .45rem; border-radius: 4px;
     }
+    .btn-flag-source {
+      font-size: .7rem; background: transparent; border: 1px solid var(--border-light);
+      color: var(--text-muted); padding: .15rem .45rem; border-radius: 4px;
+      cursor: pointer; transition: var(--transition);
+    }
+    .btn-flag-source:hover { border-color: var(--gold); color: var(--gold); }
+    .btn-flag-source.flagged { color: var(--confirm); border-color: var(--confirm); cursor: default; }
+
+    /* ===================================================
+       ADMIN — TABS INTERNI
+    =================================================== */
+    .admin-tabs { display: flex; gap: .5rem; margin-bottom: 1.5rem; border-bottom: 1px solid var(--border); padding-bottom: 0; }
+    .admin-tab-btn {
+      background: none; border: none; color: var(--text-muted);
+      font-family: var(--font-body); font-size: .85rem; padding: .5rem 1rem;
+      cursor: pointer; border-bottom: 2px solid transparent; margin-bottom: -1px;
+      transition: var(--transition);
+    }
+    .admin-tab-btn.active { color: var(--gold); border-bottom-color: var(--gold); }
+    .admin-panel-section { display: none; }
+    .admin-panel-section.active { display: block; }
+
+    /* ===================================================
+       CRITERI SCORE
+    =================================================== */
+    .criteria-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; }
+    .criteria-sum { font-size: .82rem; font-weight: 600; }
+    .criteria-sum.ok { color: var(--confirm); }
+    .criteria-sum.warn { color: var(--deny); }
+    .criterion-item {
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 1rem 1.2rem; margin-bottom: .75rem;
+      display: flex; align-items: center; gap: 1rem;
+    }
+    .criterion-weight {
+      font-family: var(--font-display); font-size: 1.4rem; font-weight: 700;
+      color: var(--gold); min-width: 3rem; text-align: center;
+    }
+    .criterion-info { flex: 1; }
+    .criterion-name { font-weight: 600; font-size: .92rem; margin-bottom: .2rem; }
+    .criterion-desc { font-size: .78rem; color: var(--text-muted); }
+    .criterion-bar-wrap { width: 100%; background: var(--border); border-radius: 999px; height: 4px; margin-top: .4rem; }
+    .criterion-bar { height: 4px; border-radius: 999px; background: var(--gold); transition: width .3s ease; }
+    .criterion-actions { display: flex; gap: .4rem; }
+    .btn-criterion-edit, .btn-criterion-del {
+      background: none; border: 1px solid var(--border); color: var(--text-muted);
+      font-size: .75rem; padding: .2rem .5rem; border-radius: 4px; cursor: pointer;
+      transition: var(--transition);
+    }
+    .btn-criterion-edit:hover { border-color: var(--gold); color: var(--gold); }
+    .btn-criterion-del:hover { border-color: var(--deny); color: var(--deny); }
+
+    /* Modale criterio */
+    .criterion-modal-overlay {
+      display: none; position: fixed; inset: 0;
+      background: rgba(0,0,0,.65); z-index: 300; align-items: center; justify-content: center;
+    }
+    .criterion-modal-overlay.open { display: flex; }
+    .criterion-modal {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: var(--radius-lg); padding: 2rem; width: 90%; max-width: 440px;
+      position: relative;
+    }
+    .criterion-modal h3 { font-family: var(--font-display); font-size: 1.2rem; margin-bottom: 1.2rem; }
+    .criterion-field { margin-bottom: 1rem; }
+    .criterion-field label { display: block; font-size: .8rem; color: var(--text-muted); margin-bottom: .3rem; }
+    .criterion-field input, .criterion-field textarea {
+      width: 100%; background: var(--card); border: 1px solid var(--border);
+      color: var(--text); font-family: var(--font-body); font-size: .9rem;
+      padding: .55rem .8rem; border-radius: var(--radius);
+    }
+    .criterion-field input[type="number"] { width: 80px; }
+    .criterion-modal-actions { display: flex; gap: .75rem; margin-top: 1.2rem; }
+
+    /* ===================================================
+       FLAGGED SOURCES
+    =================================================== */
+    .flagged-item {
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: .9rem 1.1rem; margin-bottom: .6rem;
+      display: flex; align-items: center; gap: 1rem; flex-wrap: wrap;
+    }
+    .flagged-dominio { font-weight: 600; font-size: .9rem; flex: 1; }
+    .flagged-meta { font-size: .78rem; color: var(--text-muted); }
+    .flagged-actions { display: flex; gap: .5rem; }
   </style>
 </head>
 <body>
@@ -1074,16 +1165,69 @@
           <span class="admin-badge">ADMIN</span>
         </div>
 
-        <p style="font-size:.88rem; color:var(--text-muted); margin-bottom:1.4rem;">
-          Proposte di modifica score generate dall'AI durante le analisi. Approvando, lo score viene aggiornato nel localStorage (sovrascriverà il valore hardcodato per le analisi future).
-        </p>
+        <!-- Tab interni Admin -->
+        <div class="admin-tabs">
+          <button class="admin-tab-btn active" id="atab-proposals" onclick="showAdminTab('proposals')">📋 Proposte AI</button>
+          <button class="admin-tab-btn" id="atab-criteria" onclick="showAdminTab('criteria')">⚖️ Criteri Score</button>
+          <button class="admin-tab-btn" id="atab-flagged" onclick="showAdminTab('flagged')">⚑ Non Censite</button>
+        </div>
 
-        <div class="proposals-list" id="proposals-list">
-          <!-- Rendered by JS -->
+        <!-- Sezione: Proposte AI -->
+        <div class="admin-panel-section active" id="asection-proposals">
+          <p style="font-size:.84rem; color:var(--text-muted); margin-bottom:1.2rem;">
+            Proposte di modifica score generate dall'AI. Approvando, lo score viene aggiornato localmente.
+          </p>
+          <div class="proposals-list" id="proposals-list"></div>
+        </div>
+
+        <!-- Sezione: Criteri Score -->
+        <div class="admin-panel-section" id="asection-criteria">
+          <div class="criteria-header">
+            <div>
+              <p style="font-size:.84rem; color:var(--text-muted);">Configura i criteri e i pesi per il calcolo dello score. La somma deve essere 100%.</p>
+            </div>
+            <div style="display:flex;gap:.6rem;align-items:center;">
+              <span class="criteria-sum" id="criteria-sum-display">Totale: 0%</span>
+              <button class="btn btn--sm" onclick="openCriterionModal(null)">+ Aggiungi</button>
+            </div>
+          </div>
+          <div id="criteria-list"><!-- Rendered by JS --></div>
+        </div>
+
+        <!-- Sezione: Fonti Non Censite -->
+        <div class="admin-panel-section" id="asection-flagged">
+          <p style="font-size:.84rem; color:var(--text-muted); margin-bottom:1.2rem;">
+            Fonti segnalate durante le analisi che non sono ancora nel DB. Aggiungile manualmente alla tabella Supabase.
+          </p>
+          <div id="flagged-list"><!-- Rendered by JS --></div>
         </div>
 
       </div>
     </div><!-- /panel-admin -->
+
+    <!-- Modale Criterio -->
+    <div class="criterion-modal-overlay" id="criterion-modal">
+      <div class="criterion-modal">
+        <h3 id="criterion-modal-title">Criterio</h3>
+        <input type="hidden" id="criterion-edit-id">
+        <div class="criterion-field">
+          <label>Nome criterio</label>
+          <input type="text" id="criterion-edit-nome" placeholder="Es. Tipo fonte">
+        </div>
+        <div class="criterion-field">
+          <label>Descrizione</label>
+          <textarea id="criterion-edit-desc" rows="2" placeholder="Breve descrizione del criterio"></textarea>
+        </div>
+        <div class="criterion-field">
+          <label>Peso % <span style="color:var(--text-muted);font-size:.75rem">(la somma di tutti i criteri attivi deve fare 100)</span></label>
+          <input type="number" id="criterion-edit-peso" min="1" max="100" placeholder="20">
+        </div>
+        <div class="criterion-modal-actions">
+          <button class="btn btn--primary" onclick="saveCriterion()">Salva</button>
+          <button class="btn btn--ghost" onclick="closeCriterionModal()">Annulla</button>
+        </div>
+      </div>
+    </div>
 
   </main>
 
@@ -1192,15 +1336,39 @@ Schema:
     ];
 
     /* ===================================================
+       SUPABASE CONFIG
+    =================================================== */
+    const SUPABASE_URL = 'https://kxftkhwucloiiivhdovn.supabase.co';
+
+    async function sbFetch(table, options = {}) {
+      const url = `${SUPABASE_URL}/rest/v1/${table}${options.query || ''}`;
+      const res = await fetch(url, {
+        method: options.method || 'GET',
+        headers: {
+          'apikey': SUPABASE_ANON_KEY,
+          'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+          'Content-Type': 'application/json',
+          'Prefer': options.prefer || 'return=representation',
+          ...(options.headers || {})
+        },
+        body: options.body ? JSON.stringify(options.body) : undefined
+      });
+      if (options.method === 'DELETE' || options.prefer === 'return=minimal') return res;
+      return res.json();
+    }
+
+    /* ===================================================
        STATE
     =================================================== */
     let state = {
       apiKey: '',
       currentAnalysis: null,
-      imageData: null,       // base64 string
-      imageType: null,       // mime type
+      imageData: null,
+      imageType: null,
       activeTab: 'analyze',
-      loadingTimer: null
+      loadingTimer: null,
+      sources: [],      // caricato da Supabase
+      criteria: []      // caricato da Supabase
     };
 
     /* ===================================================
@@ -1238,12 +1406,13 @@ Schema:
     function matchSourceDB(dominio) {
       if (!dominio) return null;
       const d = dominio.toLowerCase().replace(/^www\./, '');
-      const found = SOURCES_DB.find(s => {
+      // Usa le fonti da Supabase, fallback all'array hardcodato
+      const pool = state.sources.length ? state.sources : SOURCES_DB;
+      const found = pool.find(s => {
         const sd = s.dominio.toLowerCase().replace(/^www\./, '');
         return d === sd || d.endsWith('.' + sd) || sd.endsWith('.' + d) || d.includes(sd) || sd.includes(d);
       });
       if (!found) return null;
-      // Apply score override if exists
       const overrides = loadScoreOverrides();
       const score = overrides[found.id] !== undefined ? overrides[found.id] : found.score_official;
       return { ...found, score_effective: score };
@@ -1663,9 +1832,14 @@ Schema:
 
     function renderSourceRow(fonte) {
       const dbMatch = matchSourceDB(fonte.dominio);
+      const safedom = (fonte.dominio || '').replace(/'/g, '');
+      const safenome = (fonte.nome || '').replace(/'/g, '');
+      const safeurl = (fonte.url || '').replace(/'/g, '');
       const dbBadge = dbMatch
         ? `<span class="source-db-match" title="Fonte censita nel DB">⭐ DB — Score ${dbMatch.score_effective}/100</span>`
-        : '';
+        : `<span class="source-not-censita">⚑ Non censita</span>
+           <button class="btn-flag-source" id="flag-${safedom}"
+             onclick="flagSource('${safedom}','${safenome}','${safeurl}',this)">+ Segnala</button>`;
       const qClass = { alta: 'q-alta', media: 'q-media', bassa: 'q-bassa' }[fonte.qualita_stimata] || 'q-media';
 
       return `
@@ -1762,8 +1936,9 @@ Schema:
       const cat = document.getElementById('filter-categoria').value;
       const paese = document.getElementById('filter-paese').value;
       const overrides = loadScoreOverrides();
+      const pool = state.sources.length ? state.sources : SOURCES_DB;
 
-      let filtered = SOURCES_DB.filter(s => {
+      let filtered = pool.filter(s => {
         if (cat !== 'all' && s.categoria !== cat) return false;
         if (paese !== 'all' && s.paese !== paese) return false;
         return true;
@@ -1797,7 +1972,7 @@ Schema:
       }).join('');
 
       document.getElementById('sources-table-body').innerHTML = rows || '<tr><td colspan="6" style="text-align:center;padding:2rem;color:var(--text-muted)">Nessuna fonte corrisponde ai filtri selezionati.</td></tr>';
-      document.getElementById('sources-count').textContent = filtered.length;
+      document.getElementById('sources-count').textContent = pool.length;
     }
 
     /* ===================================================
@@ -1951,10 +2126,212 @@ Schema:
     }
 
     /* ===================================================
+       SUPABASE LOADERS
+    =================================================== */
+    async function loadSources() {
+      try {
+        const data = await sbFetch('sources', { query: '?select=*&order=nome' });
+        if (Array.isArray(data) && data.length) state.sources = data;
+      } catch(e) { console.warn('[FC] Sources fallback to hardcoded:', e); }
+    }
+
+    async function loadCriteria() {
+      try {
+        const data = await sbFetch('score_criteria', { query: '?select=*&order=ordine' });
+        if (Array.isArray(data) && data.length) state.criteria = data;
+      } catch(e) { console.warn('[FC] Criteria load failed:', e); }
+    }
+
+    /* ===================================================
+       FLAG SOURCE (Segnala fonte non censita)
+    =================================================== */
+    async function flagSource(dominio, nome, url, btn) {
+      if (!dominio) return;
+      btn.textContent = '…';
+      btn.disabled = true;
+      try {
+        await sbFetch('flagged_sources', {
+          method: 'POST',
+          prefer: 'return=minimal',
+          body: { dominio, nome, url, status: 'pending' }
+        });
+        btn.textContent = '✓ Segnalata';
+        btn.classList.add('flagged');
+      } catch(e) {
+        btn.textContent = 'Errore';
+        btn.disabled = false;
+        console.error('[FC] Flag failed:', e);
+      }
+    }
+
+    /* ===================================================
+       ADMIN — TAB INTERNI
+    =================================================== */
+    function showAdminTab(name) {
+      document.querySelectorAll('.admin-tab-btn').forEach(b => b.classList.remove('active'));
+      document.querySelectorAll('.admin-panel-section').forEach(s => s.classList.remove('active'));
+      document.getElementById(`atab-${name}`).classList.add('active');
+      document.getElementById(`asection-${name}`).classList.add('active');
+      if (name === 'criteria') renderCriteriaAdmin();
+      if (name === 'flagged')  renderFlaggedAdmin();
+    }
+
+    /* ===================================================
+       CRITERI SCORE — RENDER
+    =================================================== */
+    function renderCriteriaAdmin() {
+      const list = document.getElementById('criteria-list');
+      const criteria = state.criteria;
+      const total = criteria.filter(c => c.attivo).reduce((s, c) => s + c.peso, 0);
+
+      const sumEl = document.getElementById('criteria-sum-display');
+      sumEl.textContent = `Totale: ${total}%`;
+      sumEl.className = 'criteria-sum ' + (total === 100 ? 'ok' : 'warn');
+
+      if (!criteria.length) {
+        list.innerHTML = '<p style="color:var(--text-muted);font-size:.85rem;">Nessun criterio caricato.</p>';
+        return;
+      }
+
+      list.innerHTML = criteria.map(c => `
+        <div class="criterion-item" id="crit-${c.id}" style="${!c.attivo ? 'opacity:.45' : ''}">
+          <div class="criterion-weight">${c.peso}%</div>
+          <div class="criterion-info">
+            <div class="criterion-name">${escHtml(c.nome)}</div>
+            <div class="criterion-desc">${escHtml(c.descrizione || '')}</div>
+            <div class="criterion-bar-wrap">
+              <div class="criterion-bar" style="width:${c.peso}%"></div>
+            </div>
+          </div>
+          <div class="criterion-actions">
+            <button class="btn-criterion-edit" onclick="openCriterionModal(${c.id})">✏ Modifica</button>
+            <button class="btn-criterion-del" onclick="toggleCriterion(${c.id})">${c.attivo ? '⏸ Disattiva' : '▶ Attiva'}</button>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    /* ===================================================
+       CRITERI SCORE — MODALE
+    =================================================== */
+    function openCriterionModal(id) {
+      const modal = document.getElementById('criterion-modal');
+      document.getElementById('criterion-edit-id').value = id || '';
+      if (id) {
+        const c = state.criteria.find(x => x.id === id);
+        if (!c) return;
+        document.getElementById('criterion-modal-title').textContent = 'Modifica Criterio';
+        document.getElementById('criterion-edit-nome').value = c.nome;
+        document.getElementById('criterion-edit-desc').value = c.descrizione || '';
+        document.getElementById('criterion-edit-peso').value = c.peso;
+      } else {
+        document.getElementById('criterion-modal-title').textContent = 'Nuovo Criterio';
+        document.getElementById('criterion-edit-nome').value = '';
+        document.getElementById('criterion-edit-desc').value = '';
+        document.getElementById('criterion-edit-peso').value = '';
+      }
+      modal.classList.add('open');
+    }
+
+    function closeCriterionModal() {
+      document.getElementById('criterion-modal').classList.remove('open');
+    }
+
+    async function saveCriterion() {
+      const id   = document.getElementById('criterion-edit-id').value;
+      const nome = document.getElementById('criterion-edit-nome').value.trim();
+      const desc = document.getElementById('criterion-edit-desc').value.trim();
+      const peso = parseInt(document.getElementById('criterion-edit-peso').value, 10);
+
+      if (!nome || isNaN(peso) || peso < 1 || peso > 100) {
+        alert('Compila tutti i campi. Il peso deve essere tra 1 e 100.');
+        return;
+      }
+
+      try {
+        if (id) {
+          // Update
+          await sbFetch(`score_criteria?id=eq.${id}`, {
+            method: 'PATCH', prefer: 'return=minimal',
+            body: { nome, descrizione: desc, peso }
+          });
+          const idx = state.criteria.findIndex(c => c.id === parseInt(id));
+          if (idx !== -1) state.criteria[idx] = { ...state.criteria[idx], nome, descrizione: desc, peso };
+        } else {
+          // Insert
+          const newCrit = await sbFetch('score_criteria', {
+            method: 'POST',
+            body: { nome, descrizione: desc, peso, attivo: true, ordine: state.criteria.length + 1 }
+          });
+          if (Array.isArray(newCrit) && newCrit[0]) state.criteria.push(newCrit[0]);
+        }
+        closeCriterionModal();
+        renderCriteriaAdmin();
+      } catch(e) {
+        alert('Errore nel salvataggio: ' + e.message);
+      }
+    }
+
+    async function toggleCriterion(id) {
+      const c = state.criteria.find(x => x.id === id);
+      if (!c) return;
+      const newVal = !c.attivo;
+      try {
+        await sbFetch(`score_criteria?id=eq.${id}`, {
+          method: 'PATCH', prefer: 'return=minimal',
+          body: { attivo: newVal }
+        });
+        c.attivo = newVal;
+        renderCriteriaAdmin();
+      } catch(e) { alert('Errore: ' + e.message); }
+    }
+
+    /* ===================================================
+       FONTI NON CENSITE — RENDER
+    =================================================== */
+    async function renderFlaggedAdmin() {
+      const list = document.getElementById('flagged-list');
+      list.innerHTML = '<p style="color:var(--text-muted);font-size:.85rem;">Caricamento…</p>';
+      try {
+        const data = await sbFetch('flagged_sources', {
+          query: '?select=*&status=eq.pending&order=created_at.desc'
+        });
+        if (!Array.isArray(data) || !data.length) {
+          list.innerHTML = '<p style="color:var(--text-muted);font-size:.85rem;">Nessuna fonte segnalata in attesa.</p>';
+          return;
+        }
+        list.innerHTML = data.map(f => `
+          <div class="flagged-item" id="flagged-${f.id}">
+            <div style="flex:1">
+              <div class="flagged-dominio">⚑ ${escHtml(f.dominio)}</div>
+              ${f.nome ? `<div class="flagged-meta">Nome: ${escHtml(f.nome)}</div>` : ''}
+              ${f.url ? `<div class="flagged-meta"><a href="${escHtml(f.url)}" target="_blank" rel="noopener" style="color:var(--gold-dim)">${escHtml(f.url)}</a></div>` : ''}
+              <div class="flagged-meta">${new Date(f.created_at).toLocaleDateString('it-IT')}</div>
+            </div>
+            <div class="flagged-actions">
+              <button class="btn btn--sm btn--reject" onclick="dismissFlagged('${f.id}')">✕ Archivia</button>
+            </div>
+          </div>
+        `).join('');
+      } catch(e) {
+        list.innerHTML = `<p style="color:var(--deny)">Errore caricamento: ${e.message}</p>`;
+      }
+    }
+
+    async function dismissFlagged(id) {
+      try {
+        await sbFetch(`flagged_sources?id=eq.${id}`, {
+          method: 'PATCH', prefer: 'return=minimal',
+          body: { status: 'archived' }
+        });
+        document.getElementById(`flagged-${id}`)?.remove();
+      } catch(e) { alert('Errore: ' + e.message); }
+    }
+
+    /* ===================================================
        INIT
     =================================================== */
-    function init() {
-      // Load persisted API key
+    async function init() {
       state.apiKey = loadApiKey();
 
       // Check for ?admin=true in URL
@@ -1963,8 +2340,17 @@ Schema:
         document.getElementById('tab-admin').classList.remove('visually-hidden');
       }
 
-      // Initial source DB render (done lazily on tab open, but prepare count)
-      document.getElementById('sources-count').textContent = SOURCES_DB.length;
+      // Carica fonti e criteri da Supabase in parallelo
+      await Promise.all([loadSources(), loadCriteria()]);
+
+      // Aggiorna contatore fonti
+      document.getElementById('sources-count').textContent =
+        state.sources.length || SOURCES_DB.length;
+
+      // Chiudi modale criterio su click overlay
+      document.getElementById('criterion-modal').addEventListener('click', function(e) {
+        if (e.target === this) closeCriterionModal();
+      });
 
       // Show API key prompt if not set
       if (!state.apiKey) {
