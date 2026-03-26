@@ -1664,7 +1664,7 @@ Schema:
     function renderSourceRow(fonte) {
       const dbMatch = matchSourceDB(fonte.dominio);
       const dbBadge = dbMatch
-        ? `<span class="source-db-match" title="Score DB: ${dbMatch.score_effective}">⭐ DB ${dbMatch.score_effective}</span>`
+        ? `<span class="source-db-match" title="Fonte censita nel DB">⭐ DB — Score ${dbMatch.score_effective}/100</span>`
         : '';
       const qClass = { alta: 'q-alta', media: 'q-media', bassa: 'q-bassa' }[fonte.qualita_stimata] || 'q-media';
 
