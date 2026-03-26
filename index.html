@@ -975,16 +975,45 @@
       <button class="modal-close" onclick="closeSettings()" title="Chiudi">&times;</button>
       <h2 class="modal-title">Impostazioni</h2>
 
+      <!-- Provider selector -->
       <div class="field">
+        <label class="field-label">Provider AI</label>
+        <div style="display:flex;gap:.6rem;margin-bottom:.3rem;">
+          <label style="display:flex;align-items:center;gap:.4rem;cursor:pointer;font-size:.88rem;">
+            <input type="radio" name="provider" id="provider-anthropic" value="anthropic" onchange="onProviderChange()">
+            🤖 Anthropic Claude <span style="font-size:.72rem;color:var(--text-muted)">(a pagamento)</span>
+          </label>
+          <label style="display:flex;align-items:center;gap:.4rem;cursor:pointer;font-size:.88rem;">
+            <input type="radio" name="provider" id="provider-gemini" value="gemini" onchange="onProviderChange()">
+            ✨ Google Gemini <span style="font-size:.72rem;color:var(--confirm)">(gratuito)</span>
+          </label>
+        </div>
+      </div>
+
+      <!-- Anthropic key -->
+      <div class="field" id="field-anthropic">
         <label class="field-label" for="api-key-input">Anthropic API Key</label>
         <div class="field-input-wrap">
           <input type="password" id="api-key-input" class="field-input"
             placeholder="sk-ant-api03-..." autocomplete="off" spellcheck="false">
-          <button class="toggle-visibility" onclick="toggleApiKeyVisibility()" title="Mostra/nascondi">
+          <button class="toggle-visibility" onclick="toggleApiKeyVisibility('api-key-input','eye-icon')" title="Mostra/nascondi">
             <span id="eye-icon">👁</span>
           </button>
         </div>
-        <p class="field-hint">La chiave è salvata solo nel tuo browser (localStorage). Non viene mai inviata a server di terzi.</p>
+        <p class="field-hint">Salvata solo nel browser. Mai inviata a server di terzi.</p>
+      </div>
+
+      <!-- Gemini key -->
+      <div class="field" id="field-gemini" style="display:none">
+        <label class="field-label" for="gemini-key-input">Google Gemini API Key</label>
+        <div class="field-input-wrap">
+          <input type="password" id="gemini-key-input" class="field-input"
+            placeholder="AIza..." autocomplete="off" spellcheck="false">
+          <button class="toggle-visibility" onclick="toggleApiKeyVisibility('gemini-key-input','eye-icon-gemini')" title="Mostra/nascondi">
+            <span id="eye-icon-gemini">👁</span>
+          </button>
+        </div>
+        <p class="field-hint">Gratuita fino a 1.500 richieste/giorno. Ottienila su <strong>aistudio.google.com</strong></p>
       </div>
 
       <button class="btn btn--primary" onclick="saveSettings()" style="width:100%;margin-top:.5rem;">
@@ -1396,24 +1425,26 @@ Schema:
     =================================================== */
     let state = {
       apiKey: '',
+      geminiKey: '',
+      provider: 'anthropic',
       currentAnalysis: null,
       imageData: null,
       imageType: null,
       activeTab: 'analyze',
       loadingTimer: null,
-      sources: [],      // caricato da Supabase
-      criteria: []      // caricato da Supabase
+      sources: [],
+      criteria: []
     };
 
     /* ===================================================
        STORAGE HELPERS
     =================================================== */
-    function loadApiKey() {
-      return localStorage.getItem('factchecker_api_key') || '';
-    }
-    function saveApiKey(key) {
-      localStorage.setItem('factchecker_api_key', key);
-    }
+    function loadApiKey()      { return localStorage.getItem('factchecker_api_key') || ''; }
+    function saveApiKey(key)   { localStorage.setItem('factchecker_api_key', key); }
+    function loadGeminiKey()   { return localStorage.getItem('factchecker_gemini_key') || ''; }
+    function saveGeminiKey(k)  { localStorage.setItem('factchecker_gemini_key', k); }
+    function loadProvider()    { return localStorage.getItem('factchecker_provider') || 'anthropic'; }
+    function saveProvider(p)   { localStorage.setItem('factchecker_provider', p); }
     function loadProposals() {
       try { return JSON.parse(localStorage.getItem('factchecker_proposals') || '[]'); }
       catch { return []; }
@@ -1448,7 +1479,9 @@ Schema:
       });
       if (!found) return null;
       const overrides = loadScoreOverrides();
-      const score = overrides[found.id] !== undefined ? overrides[found.id] : found.score_official;
+      const override = overrides[found.id];
+      const base = override !== undefined ? override : found.score_official;
+      const score = found.score_dynamic ?? base;
       return { ...found, score_effective: score };
     }
 
@@ -1593,7 +1626,8 @@ Schema:
     const PROXY_URL = 'https://kxftkhwucloiiivhdovn.supabase.co/functions/v1/dynamic-handler';
     const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imt4ZnRraHd1Y2xvaWlpdmhkb3ZuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ1NDcyNTksImV4cCI6MjA5MDEyMzI1OX0.ivOE7hX4gsJvXKX89cvaRWH-IsXdGMbk3QGwJ_vj_4k';
 
-    async function callAPI(messages, apiKey) {
+    // ── ANTHROPIC ─────────────────────────────────────────
+    async function callAnthropicAPI(messages, apiKey) {
       const response = await fetch(PROXY_URL, {
         method: 'POST',
         headers: {
@@ -1605,27 +1639,85 @@ Schema:
           model: 'claude-sonnet-4-6',
           max_tokens: 8000,
           system: SYSTEM_PROMPT,
-          tools: [
-            {
-              type: 'web_search_20250305',
-              name: 'web_search',
-              max_uses: 10
-            }
-          ],
-          messages: messages
+          tools: [{ type: 'web_search_20250305', name: 'web_search', max_uses: 10 }],
+          messages
         })
       });
-
       if (!response.ok) {
         const errBody = await response.json().catch(() => ({}));
         const errMsg = errBody?.error?.message || `HTTP ${response.status}`;
-        if (response.status === 401) throw new Error('API key non valida o mancante. Controlla le impostazioni.');
+        if (response.status === 401) throw new Error('API key Anthropic non valida. Controlla le impostazioni.');
         if (response.status === 429) throw new Error('Rate limit raggiunto. Attendi qualche secondo e riprova.');
-        if (response.status === 400) throw new Error(`Richiesta non valida: ${errMsg}`);
-        throw new Error(`Errore API: ${errMsg}`);
+        throw new Error(`Errore API Anthropic: ${errMsg}`);
       }
-
       return response.json();
+    }
+
+    // ── GEMINI ────────────────────────────────────────────
+    function buildGeminiMessages(messages) {
+      return messages.map(m => ({
+        role: m.role === 'assistant' ? 'model' : 'user',
+        parts: (Array.isArray(m.content) ? m.content : [{ type: 'text', text: m.content }]).map(c => {
+          if (c.type === 'image') return { inline_data: { mime_type: c.source.media_type, data: c.source.data } };
+          return { text: c.text || '' };
+        })
+      }));
+    }
+
+    async function callGeminiAPI(messages, geminiKey) {
+      const body = {
+        system_instruction: { parts: [{ text: SYSTEM_PROMPT }] },
+        contents: buildGeminiMessages(messages),
+        tools: [{ google_search: {} }],
+        generationConfig: { maxOutputTokens: 8192, temperature: 0.2 }
+      };
+      const response = await fetch(PROXY_URL, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+          'x-provider': 'gemini',
+          'x-gemini-key': geminiKey
+        },
+        body: JSON.stringify(body)
+      });
+      if (!response.ok) {
+        const errBody = await response.json().catch(() => ({}));
+        const errMsg = errBody?.error?.message || `HTTP ${response.status}`;
+        if (response.status === 400) throw new Error(`Gemini: richiesta non valida — ${errMsg}`);
+        throw new Error(`Errore API Gemini: ${errMsg}`);
+      }
+      return response.json();
+    }
+
+    function parseGeminiResponse(data) {
+      const parts = data?.candidates?.[0]?.content?.parts;
+      if (!parts) throw new Error('Risposta Gemini vuota o non valida.');
+      const textPart = parts.find(p => p.text);
+      if (!textPart) throw new Error('Nessun testo nella risposta Gemini.');
+      let raw = textPart.text.trim()
+        .replace(/^```(?:json)?\s*/i, '').replace(/\s*```\s*$/, '').trim();
+      try { return JSON.parse(raw); } catch(_) {
+        const match = raw.match(/\{[\s\S]*\}/);
+        if (match) try { return JSON.parse(match[0]); } catch(_) {}
+        throw new Error('Impossibile parsare il JSON dalla risposta Gemini.');
+      }
+    }
+
+    // ── ROUTER ────────────────────────────────────────────
+    async function callAPI(messages) {
+      if (state.provider === 'gemini') {
+        if (!state.geminiKey) throw new Error('Inserisci la tua Gemini API key nelle impostazioni.');
+        return callGeminiAPI(messages, state.geminiKey);
+      }
+      if (!state.apiKey) throw new Error('Inserisci la tua Anthropic API key nelle impostazioni.');
+      return callAnthropicAPI(messages, state.apiKey);
+    }
+
+    function parseResponse(data) {
+      return state.provider === 'gemini'
+        ? parseGeminiResponse(data)
+        : parseClaudeResponse(data);
     }
 
     /* ===================================================
@@ -1677,9 +1769,14 @@ Schema:
     =================================================== */
     async function analyzeNews() {
       const input = document.getElementById('news-input').value.trim();
-      const { imageData, imageType, apiKey } = state;
+      const { imageData, imageType, provider, apiKey, geminiKey } = state;
 
-      if (!apiKey) {
+      if (provider === 'gemini' && !geminiKey) {
+        openSettings();
+        showError('Inserisci la tua Gemini API key nelle impostazioni per continuare.');
+        return;
+      }
+      if (provider === 'anthropic' && !apiKey) {
         openSettings();
         showError('Inserisci la tua Anthropic API key nelle impostazioni per continuare.');
         return;
@@ -1706,20 +1803,19 @@ Schema:
       startLoadingAnimation();
 
       try {
-        const data = await callAPI(messages, apiKey);
-        const analysis = parseClaudeResponse(data);
+        const data = await callAPI(messages);
+        const analysis = parseResponse(data);
 
-        // Validate minimal structure
         if (!analysis.claims || !analysis.analisi_globale) {
           throw new Error('Struttura JSON incompleta nella risposta. Riprova.');
         }
 
         state.currentAnalysis = analysis;
-
-        // Generate admin proposals if discrepancies found
         generateProposals(analysis);
 
-        // Render
+        // Aggiorna score dinamico delle fonti trovate
+        updateSourceScores(analysis);
+
         showLoading(false);
         renderResults(analysis);
 
@@ -2014,11 +2110,18 @@ Schema:
       const catClass = { 'fact-checker': 'fact-checker', 'agenzia': 'agenzia' };
 
       const rows = filtered.map(s => {
-        const score = overrides[s.id] !== undefined ? overrides[s.id] : s.score_official;
-        const barColor = score >= 70 ? 'var(--confirm)' : score >= 45 ? 'var(--warn)' : 'var(--deny)';
+        const scoreBase = overrides[s.id] !== undefined ? overrides[s.id] : s.score_official;
+        const scoreDyn  = s.score_dynamic ?? scoreBase;
+        const barColor  = scoreDyn >= 70 ? 'var(--confirm)' : scoreDyn >= 45 ? 'var(--warn)' : 'var(--deny)';
         const flag = flagMap[s.paese] || '🌐';
-        const cc = catClass[s.categoria] || '';
+        const cc   = catClass[s.categoria] || '';
         const trendHtml = renderTrendBadge(trendMap[s.id] ?? 0);
+        const dynDiff = scoreDyn - scoreBase;
+        const dynLabel = dynDiff === 0 ? '' :
+          `<span style="font-size:.68rem;color:${dynDiff>0?'var(--confirm)':'var(--deny)'};margin-left:.3rem">
+            ${dynDiff>0?'↑+':'↓'}${dynDiff}
+           </span>`;
+        const analyzed = s.analysis_count ? `<span style="font-size:.65rem;color:var(--text-muted)"> · ${s.analysis_count} analisi</span>` : '';
 
         return `<tr>
           <td style="font-weight:600; color:var(--text)">${escHtml(s.nome)}</td>
@@ -2028,9 +2131,12 @@ Schema:
           <td>
             <div class="source-score-bar">
               <div class="score-bar-bg">
-                <div class="score-bar-fill" style="width:${score}%; background:${barColor}"></div>
+                <div class="score-bar-fill" style="width:${scoreDyn}%; background:${barColor}"></div>
               </div>
-              <span class="score-num" style="color:${barColor}">${score}</span>
+              <span class="score-num" style="color:${barColor}">${scoreDyn}</span>
+            </div>
+            <div style="font-size:.68rem;color:var(--text-muted);margin-top:.15rem">
+              Base: ${scoreBase}${dynLabel}${analyzed}
             </div>
           </td>
           <td>${trendHtml}<span class="trend-avg">vs media ${avg}</span></td>
@@ -2150,29 +2256,36 @@ Schema:
     /* ===================================================
        SETTINGS MODAL
     =================================================== */
+    function onProviderChange() {
+      const p = document.querySelector('input[name="provider"]:checked')?.value || 'anthropic';
+      document.getElementById('field-anthropic').style.display = p === 'anthropic' ? 'block' : 'none';
+      document.getElementById('field-gemini').style.display    = p === 'gemini'    ? 'block' : 'none';
+    }
     function openSettings() {
-      document.getElementById('api-key-input').value = state.apiKey;
+      document.getElementById('api-key-input').value   = state.apiKey;
+      document.getElementById('gemini-key-input').value = state.geminiKey;
+      document.getElementById(`provider-${state.provider}`).checked = true;
+      onProviderChange();
       document.getElementById('settings-modal').classList.add('open');
     }
     function closeSettings() {
       document.getElementById('settings-modal').classList.remove('open');
     }
     function saveSettings() {
-      const key = document.getElementById('api-key-input').value.trim();
-      state.apiKey = key;
-      saveApiKey(key);
+      const provider = document.querySelector('input[name="provider"]:checked')?.value || 'anthropic';
+      state.provider   = provider;
+      state.apiKey     = document.getElementById('api-key-input').value.trim();
+      state.geminiKey  = document.getElementById('gemini-key-input').value.trim();
+      saveProvider(provider);
+      saveApiKey(state.apiKey);
+      saveGeminiKey(state.geminiKey);
       closeSettings();
     }
-    function toggleApiKeyVisibility() {
-      const input = document.getElementById('api-key-input');
-      const icon  = document.getElementById('eye-icon');
-      if (input.type === 'password') {
-        input.type = 'text';
-        icon.textContent = '🙈';
-      } else {
-        input.type = 'password';
-        icon.textContent = '👁';
-      }
+    function toggleApiKeyVisibility(inputId, iconId) {
+      const input = document.getElementById(inputId);
+      const icon  = document.getElementById(iconId);
+      if (input.type === 'password') { input.type = 'text';     icon.textContent = '🙈'; }
+      else                           { input.type = 'password'; icon.textContent = '👁'; }
     }
 
     // Close modal on overlay click
@@ -2191,6 +2304,42 @@ Schema:
         .replace(/>/g, '&gt;')
         .replace(/"/g, '&quot;')
         .replace(/'/g, '&#39;');
+    }
+
+    /* ===================================================
+       SCORE DINAMICO — aggiorna dopo ogni analisi
+    =================================================== */
+    async function updateSourceScores(analysis) {
+      if (!analysis?.claims) return;
+      const deltas = new Map(); // sourceId -> { delta, count }
+
+      analysis.claims.forEach(claim => {
+        (claim.fonti || []).forEach(fonte => {
+          const db = matchSourceDB(fonte.dominio);
+          if (!db) return;
+          const delta = fonte.qualita_stimata === 'alta' ? 2 : fonte.qualita_stimata === 'bassa' ? -2 : 0;
+          if (!deltas.has(db.id)) deltas.set(db.id, { delta: 0, count: 0 });
+          const d = deltas.get(db.id);
+          d.delta += delta;
+          d.count += 1;
+        });
+      });
+
+      for (const [id, { delta, count }] of deltas) {
+        const src = state.sources.find(s => s.id === id);
+        if (!src) continue;
+        const currentDyn = src.score_dynamic ?? src.score_official;
+        const newDyn = Math.max(0, Math.min(100, currentDyn + delta));
+        const newCount = (src.analysis_count || 0) + count;
+        try {
+          await sbFetch(`sources?id=eq.${id}`, {
+            method: 'PATCH', prefer: 'return=minimal',
+            body: { score_dynamic: newDyn, analysis_count: newCount }
+          });
+          src.score_dynamic = newDyn;
+          src.analysis_count = newCount;
+        } catch(e) { console.warn('[FC] Score update failed:', id, e); }
+      }
     }
 
     /* ===================================================
@@ -2417,7 +2566,20 @@ Schema:
                 </div>
                 <div class="flagged-form-field">
                   <label>Bias politico</label>
-                  <input type="text" id="af-bias-${f.id}" placeholder="neutro / centro / destra…">
+                  <select id="af-bias-${f.id}">
+                    <option value="neutro">Neutro</option>
+                    <option value="centro">Centro</option>
+                    <option value="centro-sinistra">Centro-sinistra</option>
+                    <option value="centro-destra">Centro-destra</option>
+                    <option value="sinistra">Sinistra</option>
+                    <option value="destra">Destra</option>
+                    <option value="filo-russo">Filo-russo</option>
+                    <option value="filo-americano">Filo-americano</option>
+                    <option value="filo-cinese">Filo-cinese</option>
+                    <option value="religioso">Religioso</option>
+                    <option value="liberale">Liberale</option>
+                    <option value="conservatore">Conservatore</option>
+                  </select>
                 </div>
                 <div class="flagged-form-field">
                   <label>Score (0-100)</label>
@@ -2488,7 +2650,9 @@ Schema:
        INIT
     =================================================== */
     async function init() {
-      state.apiKey = loadApiKey();
+      state.apiKey    = loadApiKey();
+      state.geminiKey = loadGeminiKey();
+      state.provider  = loadProvider();
 
       // Check for ?admin=true in URL
       const params = new URLSearchParams(window.location.search);
@@ -2519,7 +2683,7 @@ Schema:
       }
 
       // Versione: build number = numero progressivo di commit
-      document.getElementById('footer-version').textContent = `v1.1 · Build #11`;
+      document.getElementById('footer-version').textContent = `v1.2 · Build #12`;
 
       console.log('[FactChecker AI] v1.0 — Pronto.');
     }
