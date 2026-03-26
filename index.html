@@ -933,6 +933,19 @@
     .flagged-dominio { font-weight: 600; font-size: .9rem; flex: 1; }
     .flagged-meta { font-size: .78rem; color: var(--text-muted); }
     .flagged-actions { display: flex; gap: .5rem; }
+
+    /* ===================================================
+       TREND ATTENDIBILITÀ
+    =================================================== */
+    .trend-badge {
+      display: inline-flex; align-items: center; gap: .25rem;
+      font-size: .75rem; font-weight: 700; padding: .15rem .45rem;
+      border-radius: 4px; white-space: nowrap;
+    }
+    .trend-up   { background: var(--confirm-bg); color: var(--confirm); border: 1px solid var(--confirm-bd); }
+    .trend-mid  { background: var(--warn-bg);    color: var(--warn);    border: 1px solid var(--warn-bd); }
+    .trend-down { background: var(--deny-bg);    color: var(--deny);    border: 1px solid var(--deny-bd); }
+    .trend-avg  { font-size: .72rem; color: var(--text-muted); margin-left: .3rem; }
     .flagged-add-form {
       border-top: 1px solid var(--border);
       padding: 1rem 1.1rem;
@@ -1164,6 +1177,7 @@
                 <th>Categoria</th>
                 <th>Paese</th>
                 <th>Score</th>
+                <th>Trend</th>
                 <th>Bias</th>
               </tr>
             </thead>
@@ -1855,8 +1869,14 @@ Schema:
       const safedom = (fonte.dominio || '').replace(/'/g, '');
       const safenome = (fonte.nome || '').replace(/'/g, '');
       const safeurl = (fonte.url || '').replace(/'/g, '');
+      const overrides = loadScoreOverrides();
+      const pool = state.sources.length ? state.sources : SOURCES_DB;
+      const { avg, map: trendMap } = calcTrend(pool, overrides);
+      const trendDelta = dbMatch ? (trendMap[dbMatch.id] ?? 0) : 0;
+
       const dbBadge = dbMatch
-        ? `<span class="source-db-match" title="Fonte censita nel DB">⭐ DB — Score ${dbMatch.score_effective}/100</span>`
+        ? `<span class="source-db-match" title="Fonte censita nel DB">⭐ DB — Score ${dbMatch.score_effective}/100</span>
+           ${renderTrendBadge(trendDelta)}`
         : `<span class="source-not-censita">⚑ Non censita</span>
            <button class="btn-flag-source" id="flag-${safedom}"
              onclick="flagSource('${safedom}','${safenome}','${safeurl}',this)">+ Segnala</button>`;
@@ -1952,11 +1972,37 @@ Schema:
     /* ===================================================
        RENDER SOURCES DB
     =================================================== */
+    /**
+     * Calcola il trend di attendibilità per ogni fonte:
+     * trend = score_fonte - media_globale di tutte le fonti censite.
+     * Restituisce { avg, map: { id -> delta } }
+     */
+    function calcTrend(pool, overrides) {
+      if (!pool.length) return { avg: 0, map: {} };
+      const scores = pool.map(s => overrides[s.id] !== undefined ? overrides[s.id] : s.score_official);
+      const avg = Math.round(scores.reduce((a, b) => a + b, 0) / scores.length);
+      const map = {};
+      pool.forEach(s => {
+        const score = overrides[s.id] !== undefined ? overrides[s.id] : s.score_official;
+        map[s.id] = score - avg;
+      });
+      return { avg, map };
+    }
+
+    function renderTrendBadge(delta) {
+      if (delta > 5)  return `<span class="trend-badge trend-up">↑ +${delta}</span>`;
+      if (delta < -5) return `<span class="trend-badge trend-down">↓ ${delta}</span>`;
+      return `<span class="trend-badge trend-mid">→ ${delta >= 0 ? '+' : ''}${delta}</span>`;
+    }
+
     function renderSourcesDB() {
       const cat = document.getElementById('filter-categoria').value;
       const paese = document.getElementById('filter-paese').value;
       const overrides = loadScoreOverrides();
       const pool = state.sources.length ? state.sources : SOURCES_DB;
+
+      // Calcola trend sull'intero pool (non sul filtrato)
+      const { avg, map: trendMap } = calcTrend(pool, overrides);
 
       let filtered = pool.filter(s => {
         if (cat !== 'all' && s.categoria !== cat) return false;
@@ -1969,10 +2015,10 @@ Schema:
 
       const rows = filtered.map(s => {
         const score = overrides[s.id] !== undefined ? overrides[s.id] : s.score_official;
-        const pct = score;
-        const barColor = pct >= 70 ? 'var(--confirm)' : pct >= 45 ? 'var(--warn)' : 'var(--deny)';
+        const barColor = score >= 70 ? 'var(--confirm)' : score >= 45 ? 'var(--warn)' : 'var(--deny)';
         const flag = flagMap[s.paese] || '🌐';
         const cc = catClass[s.categoria] || '';
+        const trendHtml = renderTrendBadge(trendMap[s.id] ?? 0);
 
         return `<tr>
           <td style="font-weight:600; color:var(--text)">${escHtml(s.nome)}</td>
@@ -1982,16 +2028,18 @@ Schema:
           <td>
             <div class="source-score-bar">
               <div class="score-bar-bg">
-                <div class="score-bar-fill" style="width:${pct}%; background:${barColor}"></div>
+                <div class="score-bar-fill" style="width:${score}%; background:${barColor}"></div>
               </div>
               <span class="score-num" style="color:${barColor}">${score}</span>
             </div>
           </td>
+          <td>${trendHtml}<span class="trend-avg">vs media ${avg}</span></td>
           <td><span class="bias-tag">${escHtml(s.bias_politico)}</span></td>
         </tr>`;
       }).join('');
 
-      document.getElementById('sources-table-body').innerHTML = rows || '<tr><td colspan="6" style="text-align:center;padding:2rem;color:var(--text-muted)">Nessuna fonte corrisponde ai filtri selezionati.</td></tr>';
+      document.getElementById('sources-table-body').innerHTML = rows
+        || `<tr><td colspan="7" style="text-align:center;padding:2rem;color:var(--text-muted)">Nessuna fonte corrisponde ai filtri selezionati.</td></tr>`;
       document.getElementById('sources-count').textContent = pool.length;
     }
 
