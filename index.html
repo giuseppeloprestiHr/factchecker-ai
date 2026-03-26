@@ -922,14 +922,34 @@
     /* ===================================================
        FLAGGED SOURCES
     =================================================== */
-    .flagged-item {
+    .flagged-item-wrap {
       background: var(--card); border: 1px solid var(--border);
-      border-radius: var(--radius); padding: .9rem 1.1rem; margin-bottom: .6rem;
+      border-radius: var(--radius); margin-bottom: .6rem; overflow: hidden;
+    }
+    .flagged-item {
+      padding: .9rem 1.1rem;
       display: flex; align-items: center; gap: 1rem; flex-wrap: wrap;
     }
     .flagged-dominio { font-weight: 600; font-size: .9rem; flex: 1; }
     .flagged-meta { font-size: .78rem; color: var(--text-muted); }
     .flagged-actions { display: flex; gap: .5rem; }
+    .flagged-add-form {
+      border-top: 1px solid var(--border);
+      padding: 1rem 1.1rem;
+      background: var(--surface);
+    }
+    .flagged-form-grid {
+      display: grid; grid-template-columns: 1fr 1fr; gap: .7rem;
+    }
+    .flagged-form-field label {
+      display: block; font-size: .75rem; color: var(--text-muted); margin-bottom: .25rem;
+    }
+    .flagged-form-field input, .flagged-form-field select {
+      width: 100%; background: var(--card); border: 1px solid var(--border);
+      color: var(--text); font-family: var(--font-body); font-size: .85rem;
+      padding: .4rem .7rem; border-radius: var(--radius);
+    }
+    @media (max-width: 500px) { .flagged-form-grid { grid-template-columns: 1fr; } }
   </style>
 </head>
 <body>
@@ -2301,15 +2321,65 @@ Schema:
           return;
         }
         list.innerHTML = data.map(f => `
-          <div class="flagged-item" id="flagged-${f.id}">
-            <div style="flex:1">
-              <div class="flagged-dominio">⚑ ${escHtml(f.dominio)}</div>
-              ${f.nome ? `<div class="flagged-meta">Nome: ${escHtml(f.nome)}</div>` : ''}
-              ${f.url ? `<div class="flagged-meta"><a href="${escHtml(f.url)}" target="_blank" rel="noopener" style="color:var(--gold-dim)">${escHtml(f.url)}</a></div>` : ''}
-              <div class="flagged-meta">${new Date(f.created_at).toLocaleDateString('it-IT')}</div>
+          <div class="flagged-item-wrap" id="flagged-${f.id}">
+            <div class="flagged-item">
+              <div style="flex:1">
+                <div class="flagged-dominio">⚑ ${escHtml(f.dominio)}</div>
+                ${f.nome ? `<div class="flagged-meta">Nome: ${escHtml(f.nome)}</div>` : ''}
+                ${f.url ? `<div class="flagged-meta"><a href="${escHtml(f.url)}" target="_blank" rel="noopener" style="color:var(--gold-dim)">${escHtml(f.url)}</a></div>` : ''}
+                <div class="flagged-meta">${new Date(f.created_at).toLocaleDateString('it-IT')}</div>
+              </div>
+              <div class="flagged-actions">
+                <button class="btn btn--sm btn--approve" onclick="toggleAddForm('${f.id}')">+ Aggiungi al DB</button>
+                <button class="btn btn--sm btn--reject" onclick="dismissFlagged('${f.id}')">✕ Archivia</button>
+              </div>
             </div>
-            <div class="flagged-actions">
-              <button class="btn btn--sm btn--reject" onclick="dismissFlagged('${f.id}')">✕ Archivia</button>
+            <!-- Form aggiunta al DB -->
+            <div class="flagged-add-form" id="addform-${f.id}" style="display:none">
+              <div class="flagged-form-grid">
+                <div class="flagged-form-field">
+                  <label>Nome testata</label>
+                  <input type="text" id="af-nome-${f.id}" value="${escHtml(f.nome || f.dominio)}">
+                </div>
+                <div class="flagged-form-field">
+                  <label>Dominio</label>
+                  <input type="text" id="af-dominio-${f.id}" value="${escHtml(f.dominio)}">
+                </div>
+                <div class="flagged-form-field">
+                  <label>Categoria</label>
+                  <select id="af-cat-${f.id}">
+                    <option value="generalista">Generalista</option>
+                    <option value="agenzia">Agenzia</option>
+                    <option value="fact-checker">Fact-checker</option>
+                    <option value="economia">Economia</option>
+                    <option value="altro">Altro</option>
+                  </select>
+                </div>
+                <div class="flagged-form-field">
+                  <label>Paese</label>
+                  <select id="af-paese-${f.id}">
+                    <option value="IT">🇮🇹 Italia</option>
+                    <option value="INT">🌍 Internazionale</option>
+                    <option value="UK">🇬🇧 UK</option>
+                    <option value="US">🇺🇸 USA</option>
+                    <option value="FR">🇫🇷 Francia</option>
+                    <option value="DE">🇩🇪 Germania</option>
+                    <option value="altro">Altro</option>
+                  </select>
+                </div>
+                <div class="flagged-form-field">
+                  <label>Bias politico</label>
+                  <input type="text" id="af-bias-${f.id}" placeholder="neutro / centro / destra…">
+                </div>
+                <div class="flagged-form-field">
+                  <label>Score (0-100)</label>
+                  <input type="number" id="af-score-${f.id}" min="0" max="100" value="50">
+                </div>
+              </div>
+              <div style="display:flex;gap:.6rem;margin-top:.8rem;">
+                <button class="btn btn--primary btn--sm" onclick="addSourceFromFlagged('${f.id}')">💾 Salva nel DB</button>
+                <button class="btn btn--ghost btn--sm" onclick="toggleAddForm('${f.id}')">Annulla</button>
+              </div>
             </div>
           </div>
         `).join('');
@@ -2326,6 +2396,44 @@ Schema:
         });
         document.getElementById(`flagged-${id}`)?.remove();
       } catch(e) { alert('Errore: ' + e.message); }
+    }
+
+    function toggleAddForm(id) {
+      const form = document.getElementById(`addform-${id}`);
+      form.style.display = form.style.display === 'none' ? 'block' : 'none';
+    }
+
+    async function addSourceFromFlagged(flagId) {
+      const nome     = document.getElementById(`af-nome-${flagId}`).value.trim();
+      const dominio  = document.getElementById(`af-dominio-${flagId}`).value.trim();
+      const categoria= document.getElementById(`af-cat-${flagId}`).value;
+      const paese    = document.getElementById(`af-paese-${flagId}`).value;
+      const bias     = document.getElementById(`af-bias-${flagId}`).value.trim() || 'neutro';
+      const score    = parseInt(document.getElementById(`af-score-${flagId}`).value, 10);
+
+      if (!nome || !dominio || isNaN(score)) {
+        alert('Compila almeno nome, dominio e score.');
+        return;
+      }
+
+      try {
+        // Inserisci nella tabella sources
+        await sbFetch('sources', {
+          method: 'POST', prefer: 'return=minimal',
+          body: { nome, dominio, categoria, paese, bias_politico: bias, score_official: score }
+        });
+        // Aggiorna la flagged come approvata
+        await sbFetch(`flagged_sources?id=eq.${flagId}`, {
+          method: 'PATCH', prefer: 'return=minimal',
+          body: { status: 'approved' }
+        });
+        // Aggiorna state.sources e rimuovi dalla lista
+        await loadSources();
+        document.getElementById(`flagged-${flagId}`)?.remove();
+        document.getElementById('sources-count').textContent = state.sources.length;
+      } catch(e) {
+        alert('Errore salvataggio: ' + (e.message || 'Dominio già presente nel DB?'));
+      }
     }
 
     /* ===================================================
